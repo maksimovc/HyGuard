@@ -1,0 +1,14 @@
+{
+  "Id": "HyGuard_Wand",
+  "MaxStack": 1,
+  "Quality": "Rare",
+  "Icon": "Icons/ItemsGenerated/HyGuard/wand.png",
+  "PlayerAnimationsId": "Item",
+  "Categories": [
+    "HyGuard.Tools"
+  ],
+  "TranslationProperties": {
+    "Name": "Hytale Guard Wand",
+    "Description": "Left click cycles selection point 1, point 2, point 1, point 2."
+  }
+}

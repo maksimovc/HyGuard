@@ -1,0 +1,132 @@
+$C = "../Common.ui";
+$Hg = "HyGuardShared.ui";
+
+$C.@PageOverlay {
+  $C.@Container {
+    Anchor: (Width: 1120, Height: 760);
+    Background: $Hg.@HgPanelBackground;
+
+    Button #BackButton {
+      Anchor: (Top: 24, Left: 28, Width: 102, Height: 42);
+      Style: $Hg.@HgSecondaryButtonStyle;
+      Label { Text: "Back"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+    }
+
+    Label #PageTitle {
+      Text: "Flag Editor";
+      Style: $Hg.@HgTitleStyle;
+      Anchor: (Top: 28, Left: 148, Right: 148, Height: 26);
+    }
+
+    Label #Subtitle {
+      Style: $Hg.@HgMetaStyle;
+      Anchor: (Top: 58, Left: 148, Right: 148, Height: 32);
+    }
+
+    Button #CloseIconButton {
+      Anchor: (Top: 24, Right: 28, Width: 42, Height: 42);
+      Style: $Hg.@HgSecondaryButtonStyle;
+      Label { Text: "X"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+    }
+
+    Group #StatusCard {
+      Anchor: (Top: 108, Left: 28, Right: 28, Height: 60);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 12, Bottom: 12, Left: 18, Right: 18);
+
+      Group #StatusInfo { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgPrimary; Visible: false; }
+      Group #StatusSuccess { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgPositive; Visible: false; }
+      Group #StatusWarning { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgDangerHover; Visible: false; }
+      Group #StatusError { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgDanger; Visible: false; }
+
+      Label { Text: "Status"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 18, Width: 80, Height: 16); }
+      Label #StatusText { Style: $Hg.@HgBodyStyle; Anchor: (Top: 22, Left: 18, Right: 0, Height: 18); }
+    }
+
+    Group #SidebarCard {
+      Anchor: (Top: 186, Left: 28, Width: 268, Bottom: 28);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
+
+      Label { Text: "Categories"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
+      Label { Text: "Switch sections instead of scrolling one flat flag wall."; Style: $Hg.@HgMetaStyle; Anchor: (Top: 22, Left: 0, Right: 0, Height: 34); }
+
+      Group {
+        Anchor: (Top: 68, Left: 0, Right: 0, Height: 40);
+        Background: $Hg.@HgInputBackground;
+        OutlineColor: $Hg.@HgOutline;
+        OutlineSize: 1;
+        Padding: (Left: 10, Right: 10, Top: 6, Bottom: 6);
+
+        TextField #SearchInput {
+          Anchor: (Full: 0);
+          Style: $Hg.@HgInputStyle;
+          PlaceholderText: "Search flags";
+          PlaceholderStyle: $C.@DefaultInputFieldPlaceholderStyle;
+        }
+      }
+
+      Button #CategoryBlocksButton {
+        Anchor: (Top: 126, Left: 0, Right: 0, Height: 40);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Blocks"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #CategoryBlocksSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #CategoryPlayersButton {
+        Anchor: (Top: 174, Left: 0, Right: 0, Height: 40);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Players"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #CategoryPlayersSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #CategoryMobsButton {
+        Anchor: (Top: 222, Left: 0, Right: 0, Height: 40);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Mobs"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #CategoryMobsSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #CategoryEnvironmentButton {
+        Anchor: (Top: 270, Left: 0, Right: 0, Height: 40);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Environment"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #CategoryEnvironmentSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #CategoryEntryExitButton {
+        Anchor: (Top: 318, Left: 0, Right: 0, Height: 40);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Entry / Exit"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #CategoryEntryExitSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #CategorySpecialButton {
+        Anchor: (Top: 366, Left: 0, Right: 0, Height: 40);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Special"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #CategorySpecialSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+    }
+
+    Group #ContentCard {
+      Anchor: (Top: 186, Left: 314, Right: 28, Bottom: 28);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
+
+      Label #ActiveCategoryTitle { Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 180, Height: 18); }
+      Label #ActiveCategoryHint { Style: $Hg.@HgMetaStyle; Anchor: (Top: 22, Left: 0, Right: 0, Height: 18); }
+      Label #BodyHint { Style: $Hg.@HgMetaStyle; Anchor: (Top: 46, Left: 0, Right: 0, Height: 18); }
+
+      Group #FlagScrollArea {
+        Anchor: (Top: 78, Left: 0, Right: 0, Bottom: 0);
+        LayoutMode: TopScrolling;
+        ScrollbarStyle: $C.@DefaultScrollbarStyle;
+
+        Group #FlagRowsGroup {
+          LayoutMode: Top;
+        }
+      }
+    }
+  }
+}

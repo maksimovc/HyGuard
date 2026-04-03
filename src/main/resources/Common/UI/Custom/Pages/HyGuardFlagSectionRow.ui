@@ -1,0 +1,15 @@
+$Hg = "HyGuardShared.ui";
+
+Group {
+  Anchor: (Left: 4, Right: 4, Height: 34, Bottom: 10);
+
+  Label #SectionTitle {
+    Anchor: (Top: 0, Left: 0, Right: 0, Height: 18);
+    Style: $Hg.@HgSectionTitleStyle;
+  }
+
+  Group {
+    Anchor: (Top: 26, Left: 0, Right: 0, Height: 1);
+    Background: $Hg.@HgOutline;
+  }
+}

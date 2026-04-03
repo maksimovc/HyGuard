@@ -1,0 +1,188 @@
+$C = "../Common.ui";
+
+@HgPanelBackground = PatchStyle(Color: #0e1823(0.99));
+@HgSurface = PatchStyle(Color: #152331(0.985));
+@HgSurfaceAlt = PatchStyle(Color: #1c2d3d(0.985));
+@HgSurfaceHover = PatchStyle(Color: #23384b(0.99));
+@HgSurfacePressed = PatchStyle(Color: #172938(0.99));
+@HgSurfaceDisabled = PatchStyle(Color: #121a22(0.95));
+@HgPrimary = PatchStyle(Color: #2f7c9f);
+@HgPrimaryHover = PatchStyle(Color: #3993ba);
+@HgPrimaryPressed = PatchStyle(Color: #245f7d);
+@HgSecondary = PatchStyle(Color: #31485d);
+@HgSecondaryHover = PatchStyle(Color: #406178);
+@HgSecondaryPressed = PatchStyle(Color: #27394a);
+@HgDanger = PatchStyle(Color: #8f4440);
+@HgDangerHover = PatchStyle(Color: #b65550);
+@HgDangerPressed = PatchStyle(Color: #713532);
+@HgPositive = PatchStyle(Color: #2f7a58);
+@HgPositiveHover = PatchStyle(Color: #3a9870);
+@HgPositivePressed = PatchStyle(Color: #255f45);
+@HgNeutral = PatchStyle(Color: #556578);
+@HgNeutralHover = PatchStyle(Color: #6d7f93);
+@HgNeutralPressed = PatchStyle(Color: #44515f);
+@HgInputBackground = PatchStyle(Color: #0c141d);
+@HgOutline = #2d4559;
+@HgOutlineStrong = #49a6d6;
+
+@HgTitleStyle = LabelStyle(
+  FontSize: 22,
+  TextColor: #ffffff,
+  RenderBold: true,
+  VerticalAlignment: Center
+);
+
+@HgMetaStyle = LabelStyle(
+  FontSize: 12,
+  TextColor: #9fb2c3,
+  VerticalAlignment: Center,
+  Wrap: true
+);
+
+@HgBodyStyle = LabelStyle(
+  FontSize: 13,
+  TextColor: #eff5fa,
+  VerticalAlignment: Center,
+  Wrap: true
+);
+
+@HgSectionTitleStyle = LabelStyle(
+  FontSize: 12,
+  TextColor: #dce8f2,
+  RenderBold: true,
+  RenderUppercase: true,
+  VerticalAlignment: Center
+);
+
+@HgFieldLabelStyle = LabelStyle(
+  FontSize: 11,
+  TextColor: #a9bdcd,
+  RenderBold: true,
+  RenderUppercase: true,
+  VerticalAlignment: Center
+);
+
+@HgButtonLabelStyle = LabelStyle(
+  FontSize: 13,
+  TextColor: #ffffff,
+  RenderBold: true,
+  HorizontalAlignment: Center,
+  VerticalAlignment: Center
+);
+
+@HgButtonLabelDisabledStyle = LabelStyle(
+  FontSize: 13,
+  TextColor: #6e8294,
+  RenderBold: true,
+  HorizontalAlignment: Center,
+  VerticalAlignment: Center
+);
+
+@HgChipLabelStyle = LabelStyle(
+  FontSize: 11,
+  TextColor: #dce8f2,
+  RenderBold: true,
+  HorizontalAlignment: Center,
+  VerticalAlignment: Center
+);
+
+@HgInputStyle = InputFieldStyle(
+  FontSize: 13,
+  TextColor: #ffffff
+);
+
+@HgSecondaryButtonStyle = ButtonStyle(
+  Default: (Background: @HgSecondary),
+  Hovered: (Background: @HgSecondaryHover),
+  Pressed: (Background: @HgSecondaryPressed),
+  Disabled: (Background: @HgSurfaceDisabled),
+  Sounds: $C.@ButtonSounds,
+);
+
+@HgSecondaryTextButtonStyle = TextButtonStyle(
+  Default: (Background: @HgSecondary, LabelStyle: @HgButtonLabelStyle),
+  Hovered: (Background: @HgSecondaryHover, LabelStyle: @HgButtonLabelStyle),
+  Pressed: (Background: @HgSecondaryPressed, LabelStyle: @HgButtonLabelStyle),
+  Disabled: (Background: @HgSurfaceDisabled, LabelStyle: @HgButtonLabelDisabledStyle),
+  Sounds: $C.@ButtonSounds,
+);
+
+@HgPrimaryButtonStyle = ButtonStyle(
+  Default: (Background: @HgPrimary),
+  Hovered: (Background: @HgPrimaryHover),
+  Pressed: (Background: @HgPrimaryPressed),
+  Disabled: (Background: @HgSurfaceDisabled),
+  Sounds: $C.@ButtonSounds,
+);
+
+@HgPrimaryTextButtonStyle = TextButtonStyle(
+  Default: (Background: @HgPrimary, LabelStyle: @HgButtonLabelStyle),
+  Hovered: (Background: @HgPrimaryHover, LabelStyle: @HgButtonLabelStyle),
+  Pressed: (Background: @HgPrimaryPressed, LabelStyle: @HgButtonLabelStyle),
+  Disabled: (Background: @HgSurfaceDisabled, LabelStyle: @HgButtonLabelDisabledStyle),
+  Sounds: $C.@ButtonSounds,
+);
+
+@HgDangerButtonStyle = ButtonStyle(
+  Default: (Background: @HgDanger),
+  Hovered: (Background: @HgDangerHover),
+  Pressed: (Background: @HgDangerPressed),
+  Disabled: (Background: @HgSurfaceDisabled),
+  Sounds: $C.@ButtonSounds,
+);
+
+@HgDangerTextButtonStyle = TextButtonStyle(
+  Default: (Background: @HgDanger, LabelStyle: @HgButtonLabelStyle),
+  Hovered: (Background: @HgDangerHover, LabelStyle: @HgButtonLabelStyle),
+  Pressed: (Background: @HgDangerPressed, LabelStyle: @HgButtonLabelStyle),
+  Disabled: (Background: @HgSurfaceDisabled, LabelStyle: @HgButtonLabelDisabledStyle),
+  Sounds: $C.@ButtonSounds,
+);
+
+@HgPositiveButtonStyle = ButtonStyle(
+  Default: (Background: @HgPositive),
+  Hovered: (Background: @HgPositiveHover),
+  Pressed: (Background: @HgPositivePressed),
+  Disabled: (Background: @HgSurfaceDisabled),
+  Sounds: $C.@ButtonSounds,
+);
+
+@HgPositiveTextButtonStyle = TextButtonStyle(
+  Default: (Background: @HgPositive, LabelStyle: @HgButtonLabelStyle),
+  Hovered: (Background: @HgPositiveHover, LabelStyle: @HgButtonLabelStyle),
+  Pressed: (Background: @HgPositivePressed, LabelStyle: @HgButtonLabelStyle),
+  Disabled: (Background: @HgSurfaceDisabled, LabelStyle: @HgButtonLabelDisabledStyle),
+  Sounds: $C.@ButtonSounds,
+);
+
+@HgNeutralButtonStyle = ButtonStyle(
+  Default: (Background: @HgNeutral),
+  Hovered: (Background: @HgNeutralHover),
+  Pressed: (Background: @HgNeutralPressed),
+  Disabled: (Background: @HgSurfaceDisabled),
+  Sounds: $C.@ButtonSounds,
+);
+
+@HgNeutralTextButtonStyle = TextButtonStyle(
+  Default: (Background: @HgNeutral, LabelStyle: @HgButtonLabelStyle),
+  Hovered: (Background: @HgNeutralHover, LabelStyle: @HgButtonLabelStyle),
+  Pressed: (Background: @HgNeutralPressed, LabelStyle: @HgButtonLabelStyle),
+  Disabled: (Background: @HgSurfaceDisabled, LabelStyle: @HgButtonLabelDisabledStyle),
+  Sounds: $C.@ButtonSounds,
+);
+
+@HgCardButtonStyle = ButtonStyle(
+  Default: (Background: @HgSurfaceAlt),
+  Hovered: (Background: @HgSurfaceHover),
+  Pressed: (Background: @HgSurfacePressed),
+  Disabled: (Background: @HgSurfaceDisabled),
+  Sounds: $C.@ButtonSounds,
+);
+
+@HgTabButtonStyle = ButtonStyle(
+  Default: (Background: @HgSurfaceAlt),
+  Hovered: (Background: @HgSurfaceHover),
+  Pressed: (Background: @HgSurfacePressed),
+  Disabled: (Background: @HgSurfaceDisabled),
+  Sounds: $C.@ButtonSounds,
+);

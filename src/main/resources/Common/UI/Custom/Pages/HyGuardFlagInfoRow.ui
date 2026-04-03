@@ -1,0 +1,17 @@
+$Hg = "HyGuardShared.ui";
+
+Group {
+  Anchor: (Left: 4, Right: 4, Height: 74, Bottom: 10);
+  Background: $Hg.@HgSurfaceAlt;
+  Padding: (Top: 12, Bottom: 12, Left: 14, Right: 14);
+
+  Label #InfoTitle {
+    Anchor: (Top: 0, Left: 0, Right: 0, Height: 18);
+    Style: (FontSize: 13, TextColor: #f3f9fd, RenderBold: true, VerticalAlignment: Center);
+  }
+
+  Label #InfoDetail {
+    Anchor: (Top: 24, Left: 0, Right: 0, Height: 28);
+    Style: (FontSize: 12, TextColor: #aac1cf, Wrap: true);
+  }
+}

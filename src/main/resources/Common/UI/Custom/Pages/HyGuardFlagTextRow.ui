@@ -1,0 +1,89 @@
+$C = "../Common.ui";
+$Hg = "HyGuardShared.ui";
+
+Group {
+  Anchor: (Left: 4, Right: 4, Height: 124, Bottom: 10);
+  Background: $Hg.@HgSurfaceAlt;
+  Padding: (Top: 12, Bottom: 12, Left: 14, Right: 14);
+
+  Label #FlagName {
+    Anchor: (Top: 0, Left: 0, Right: 320, Height: 18);
+    Style: (FontSize: 13, TextColor: #f3f9fd, RenderBold: true, VerticalAlignment: Center);
+  }
+
+  Label #FlagDescription {
+    Anchor: (Top: 24, Left: 0, Right: 320, Height: 18);
+    Style: (FontSize: 12, TextColor: #aac1cf, VerticalAlignment: Center);
+  }
+
+  Group #InputShell {
+    Anchor: (Top: 54, Left: 0, Right: 212, Height: 40);
+    Background: $Hg.@HgInputBackground;
+    OutlineColor: $Hg.@HgOutline;
+    OutlineSize: 1;
+    Padding: (Left: 10, Right: 10, Top: 6, Bottom: 6);
+
+    TextField #FlagTextInput {
+      Anchor: (Full: 0);
+      Style: $Hg.@HgInputStyle;
+      PlaceholderStyle: $C.@DefaultInputFieldPlaceholderStyle;
+    }
+  }
+
+  Group #PresetRow {
+    Anchor: (Top: 54, Left: 0, Right: 212, Height: 40);
+    Visible: false;
+
+    Button #AdventureButton {
+      Anchor: (Top: 0, Left: 0, Width: 150, Height: 40);
+      Style: $Hg.@HgSecondaryButtonStyle;
+      Label { Text: "Adventure"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+      Group #AdventureSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+    }
+
+    Button #CreativeButton {
+      Anchor: (Top: 0, Left: 164, Width: 150, Height: 40);
+      Style: $Hg.@HgSecondaryButtonStyle;
+      Label { Text: "Creative"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+      Group #CreativeSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+    }
+  }
+
+  Button #SaveBtn {
+    Anchor: (Top: 54, Right: 102, Width: 92, Height: 40);
+    Style: $Hg.@HgPrimaryButtonStyle;
+    Label { Text: "Save"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+  }
+
+  Button #SaveBtnDisabled {
+    Anchor: (Top: 54, Right: 102, Width: 92, Height: 40);
+    Style: $Hg.@HgSecondaryButtonStyle;
+    Visible: false;
+    Label { Text: "Save"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+  }
+
+  Button #ClearBtn {
+    Anchor: (Top: 54, Right: 0, Width: 92, Height: 40);
+    Style: $Hg.@HgNeutralButtonStyle;
+    Label { Text: "Clear"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+  }
+
+  Button #ClearBtnDisabled {
+    Anchor: (Top: 54, Right: 0, Width: 92, Height: 40);
+    Style: $Hg.@HgSecondaryButtonStyle;
+    Visible: false;
+    Label { Text: "Clear"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+  }
+
+  Label #CurrentValue {
+    Anchor: (Top: 100, Left: 0, Right: 0, Height: 14);
+    Style: (FontSize: 11, TextColor: #cde4f6, VerticalAlignment: Center);
+  }
+
+  Label #ReadOnlyHint {
+    Anchor: (Top: 100, Left: 0, Right: 0, Height: 14);
+    Style: (FontSize: 11, TextColor: #d7a19f, VerticalAlignment: Center);
+    Text: "Read only: you can inspect this flag, but you cannot change it.";
+    Visible: false;
+  }
+}

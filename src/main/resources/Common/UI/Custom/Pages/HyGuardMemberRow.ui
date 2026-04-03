@@ -1,0 +1,61 @@
+$Hg = "HyGuardShared.ui";
+
+Button #SelectButton {
+  Anchor: (Left: 4, Right: 4, Height: 88, Bottom: 10);
+  Padding: (Top: 12, Bottom: 12, Left: 16, Right: 16);
+  Style: $Hg.@HgCardButtonStyle;
+
+  Group #SelectedAccent {
+    Anchor: (Left: 0, Width: 4, Top: 0, Bottom: 0);
+    Background: $Hg.@HgPrimary;
+    Visible: false;
+  }
+
+  Group {
+    Anchor: (Top: 8, Left: 18, Width: 110, Height: 28);
+    Background: $Hg.@HgSurface;
+    Label #RoleBadge {
+      Anchor: (Full: 0);
+      Style: $Hg.@HgChipLabelStyle;
+    }
+  }
+
+  Label #MemberName {
+    Anchor: (Top: 6, Left: 144, Right: 150, Height: 20);
+    Style: (FontSize: 14, TextColor: #f2f8fd, RenderBold: true, VerticalAlignment: Center);
+  }
+
+  Label #MemberMeta {
+    Anchor: (Top: 34, Left: 144, Right: 120, Height: 24);
+    Style: (FontSize: 12, TextColor: #a6bfd0, Wrap: true);
+  }
+
+  Group #OwnerChip {
+    Anchor: (Top: 8, Right: 82, Width: 58, Height: 24);
+    Background: $Hg.@HgDangerHover;
+    Visible: false;
+    Label {
+      Text: "OWNER";
+      Anchor: (Full: 0);
+      Style: (FontSize: 10, TextColor: #ffffff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center);
+    }
+  }
+
+  Group #YouChip {
+    Anchor: (Top: 8, Right: 16, Width: 50, Height: 24);
+    Background: $Hg.@HgPrimary;
+    Visible: false;
+    Label {
+      Text: "YOU";
+      Anchor: (Full: 0);
+      Style: (FontSize: 10, TextColor: #ffffff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center);
+    }
+  }
+
+  Label #SelectedHint {
+    Anchor: (Bottom: 10, Right: 0, Width: 96, Height: 16);
+    Style: (FontSize: 11, TextColor: #b8e5ff, RenderBold: true, HorizontalAlignment: End, VerticalAlignment: Center, RenderUppercase: true);
+    Text: "Selected";
+    Visible: false;
+  }
+}

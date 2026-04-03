@@ -1,0 +1,92 @@
+$C = "../Common.ui";
+$Hg = "HyGuardShared.ui";
+
+$C.@PageOverlay {
+  $C.@Container {
+    Anchor: (Width: 1000, Height: 680);
+    Background: $Hg.@HgPanelBackground;
+
+    Label {
+      Text: "HyGuard Regions";
+      Style: $Hg.@HgTitleStyle;
+      Anchor: (Top: 28, Left: 28, Height: 26);
+    }
+
+    Label #PageTitle {
+      Style: $Hg.@HgMetaStyle;
+      Anchor: (Top: 60, Left: 28, Right: 90, Height: 18);
+    }
+
+    Button #CloseIconButton {
+      Anchor: (Top: 24, Right: 28, Width: 42, Height: 42);
+      Style: $Hg.@HgSecondaryButtonStyle;
+
+      Label {
+        Text: "X";
+        Style: $Hg.@HgButtonLabelStyle;
+        Anchor: (Full: 0);
+      }
+    }
+
+    Group #SummaryCard {
+      Anchor: (Top: 96, Left: 28, Right: 28, Height: 102);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
+
+      Label {
+        Text: "World";
+        Style: $Hg.@HgSectionTitleStyle;
+        Anchor: (Top: 0, Left: 0, Width: 70, Height: 18);
+      }
+
+      Label #WorldValue {
+        Style: $Hg.@HgBodyStyle;
+        Anchor: (Top: 22, Left: 0, Width: 240, Height: 18);
+      }
+
+      Label {
+        Text: "Saved regions";
+        Style: $Hg.@HgSectionTitleStyle;
+        Anchor: (Top: 0, Left: 286, Width: 110, Height: 18);
+      }
+
+      Label #CountValue {
+        Style: $Hg.@HgBodyStyle;
+        Anchor: (Top: 22, Left: 286, Width: 80, Height: 18);
+      }
+
+      Label #HelpText {
+        Style: $Hg.@HgMetaStyle;
+        Anchor: (Top: 54, Left: 0, Right: 0, Height: 32);
+      }
+    }
+
+    Group {
+      Anchor: (Top: 218, Left: 28, Right: 28, Bottom: 28);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 16, Bottom: 16, Left: 12, Right: 12);
+
+      Label {
+        Text: "Region cards";
+        Style: $Hg.@HgSectionTitleStyle;
+        Anchor: (Top: 0, Left: 6, Width: 160, Height: 18);
+      }
+
+      Label {
+        Text: "Each card is fully clickable and highlights on hover.";
+        Style: $Hg.@HgMetaStyle;
+        Anchor: (Top: 20, Left: 6, Right: 0, Height: 18);
+      }
+
+      Group #RowsContainer {
+        Anchor: (Top: 48, Left: 0, Right: 0, Bottom: 0);
+        LayoutMode: TopScrolling;
+        ScrollbarStyle: $C.@DefaultScrollbarStyle;
+
+        Group #RegionGroup {
+          LayoutMode: Top;
+        }
+      }
+    }
+  }
+}

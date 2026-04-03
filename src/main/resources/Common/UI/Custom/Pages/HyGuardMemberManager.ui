@@ -1,0 +1,200 @@
+$C = "../Common.ui";
+$Hg = "HyGuardShared.ui";
+
+$C.@PageOverlay {
+  $C.@Container {
+    Anchor: (Width: 1080, Height: 740);
+    Background: $Hg.@HgPanelBackground;
+
+    Button #BackButton {
+      Anchor: (Top: 24, Left: 28, Width: 102, Height: 42);
+      Style: $Hg.@HgSecondaryButtonStyle;
+      Label { Text: "Back"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+    }
+
+    Label #PageTitle {
+      Text: "Member Manager";
+      Style: $Hg.@HgTitleStyle;
+      Anchor: (Top: 28, Left: 148, Right: 148, Height: 26);
+    }
+
+    Label #Subtitle {
+      Style: $Hg.@HgMetaStyle;
+      Anchor: (Top: 58, Left: 148, Right: 148, Height: 32);
+    }
+
+    Button #CloseIconButton {
+      Anchor: (Top: 24, Right: 28, Width: 42, Height: 42);
+      Style: $Hg.@HgSecondaryButtonStyle;
+      Label { Text: "X"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+    }
+
+    Group #StatusCard {
+      Anchor: (Top: 108, Left: 28, Right: 28, Height: 60);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 12, Bottom: 12, Left: 18, Right: 18);
+
+      Group #StatusInfo { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgPrimary; Visible: false; }
+      Group #StatusSuccess { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgPositive; Visible: false; }
+      Group #StatusWarning { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgDangerHover; Visible: false; }
+      Group #StatusError { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgDanger; Visible: false; }
+
+      Label { Text: "Status"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 18, Width: 80, Height: 16); }
+      Label #StatusText { Style: $Hg.@HgBodyStyle; Anchor: (Top: 22, Left: 18, Right: 0, Height: 18); }
+    }
+
+    Group #MembersPanel {
+      Anchor: (Top: 186, Left: 28, Width: 380, Bottom: 28);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
+
+      Label { Text: "Members"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
+      Label #OwnerValue { Style: $Hg.@HgMetaStyle; Anchor: (Top: 24, Left: 0, Right: 0, Height: 18); }
+
+      Group #MemberScrollArea {
+        Anchor: (Top: 56, Left: 0, Right: 0, Bottom: 0);
+        LayoutMode: TopScrolling;
+        ScrollbarStyle: $C.@DefaultScrollbarStyle;
+
+        Group #MemberRowsGroup {
+          LayoutMode: Top;
+        }
+      }
+    }
+
+    Group #AddCard {
+      Anchor: (Top: 186, Left: 426, Right: 28, Height: 258);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
+
+      Label { Text: "Add or update member"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 180, Height: 18); }
+      Label { Text: "Player"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 34, Left: 0, Width: 80, Height: 16); }
+
+      Group {
+        Anchor: (Top: 54, Left: 0, Right: 176, Height: 40);
+        Background: $Hg.@HgInputBackground;
+        OutlineColor: $Hg.@HgOutline;
+        OutlineSize: 1;
+        Padding: (Left: 10, Right: 10, Top: 6, Bottom: 6);
+
+        TextField #AddMemberInput {
+          Anchor: (Full: 0);
+          Style: $Hg.@HgInputStyle;
+          PlaceholderText: "Player username";
+          PlaceholderStyle: $C.@DefaultInputFieldPlaceholderStyle;
+        }
+      }
+
+      Button #AddMemberButton {
+        Anchor: (Top: 54, Right: 0, Width: 160, Height: 40);
+        Style: $Hg.@HgPrimaryButtonStyle;
+        Label { Text: "Add / Update"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+      }
+
+      Button #AddMemberButtonDisabled {
+        Anchor: (Top: 54, Right: 0, Width: 160, Height: 40);
+        Style: $Hg.@HgSecondaryButtonStyle;
+        Visible: false;
+        Label { Text: "Manage locked"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+      }
+
+      Label { Text: "Role"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 112, Left: 0, Width: 60, Height: 16); }
+      Label #SelectedRolePreview { Style: $Hg.@HgMetaStyle; Anchor: (Top: 112, Left: 76, Right: 0, Height: 16); }
+
+      Button #RoleCoOwnerButton {
+        Anchor: (Top: 138, Left: 0, Width: 126, Height: 38);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Co-owner"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #RoleCoOwnerSelected { Anchor: (Left: 8, Right: 8, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #RoleManagerButton {
+        Anchor: (Top: 138, Left: 138, Width: 126, Height: 38);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Manager"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #RoleManagerSelected { Anchor: (Left: 8, Right: 8, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #RoleMemberButton {
+        Anchor: (Top: 138, Left: 276, Width: 126, Height: 38);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Member"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #RoleMemberSelected { Anchor: (Left: 8, Right: 8, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #RoleTrustedButton {
+        Anchor: (Top: 184, Left: 0, Width: 126, Height: 38);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Trusted"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #RoleTrustedSelected { Anchor: (Left: 8, Right: 8, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #RoleVisitorButton {
+        Anchor: (Top: 184, Left: 138, Width: 126, Height: 38);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Visitor"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #RoleVisitorSelected { Anchor: (Left: 8, Right: 8, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Label #AddHint {
+        Style: $Hg.@HgMetaStyle;
+        Anchor: (Top: 230, Left: 0, Right: 0, Height: 18);
+      }
+    }
+
+    Group #SelectedCard {
+      Anchor: (Top: 462, Left: 426, Right: 28, Bottom: 28);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
+
+      Label { Text: "Selected member"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 180, Height: 18); }
+      Label #SelectedName { Style: $Hg.@HgBodyStyle; Anchor: (Top: 34, Left: 0, Right: 0, Height: 22); }
+      Label #SelectedRole { Style: $Hg.@HgMetaStyle; Anchor: (Top: 62, Left: 0, Right: 0, Height: 18); }
+      Label #SelectionHint { Style: $Hg.@HgMetaStyle; Anchor: (Top: 92, Left: 0, Right: 0, Height: 34); }
+
+      Button #PromoteButton {
+        Anchor: (Top: 150, Left: 0, Width: 170, Height: 42);
+        Style: $Hg.@HgPrimaryButtonStyle;
+        Label { Text: "Promote"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+      }
+
+      Button #PromoteButtonDisabled {
+        Anchor: (Top: 150, Left: 0, Width: 170, Height: 42);
+        Style: $Hg.@HgSecondaryButtonStyle;
+        Visible: false;
+        Label { Text: "Promote locked"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+      }
+
+      Button #DemoteButton {
+        Anchor: (Top: 150, Left: 184, Width: 170, Height: 42);
+        Style: $Hg.@HgSecondaryButtonStyle;
+        Label { Text: "Demote"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+      }
+
+      Button #DemoteButtonDisabled {
+        Anchor: (Top: 150, Left: 184, Width: 170, Height: 42);
+        Style: $Hg.@HgSecondaryButtonStyle;
+        Visible: false;
+        Label { Text: "Demote locked"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+      }
+
+      Button #RemoveButton {
+        Anchor: (Top: 150, Left: 368, Width: 170, Height: 42);
+        Style: $Hg.@HgDangerButtonStyle;
+        Label #RemoveButtonLabel { Text: "Remove Member"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+      }
+
+      Button #RemoveButtonDisabled {
+        Anchor: (Top: 150, Left: 368, Width: 170, Height: 42);
+        Style: $Hg.@HgSecondaryButtonStyle;
+        Visible: false;
+        Label { Text: "Remove locked"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+      }
+
+      Label #RemoveHint {
+        Style: $Hg.@HgMetaStyle;
+        Anchor: (Top: 206, Left: 0, Right: 0, Height: 34);
+      }
+    }
+  }
+}

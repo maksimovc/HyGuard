@@ -95,6 +95,7 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
                     setStatus(StatusTone.ERROR, "Teleport failed. The target location may be invalid.");
                 } else {
                     plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionTeleported, Map.of("name", region.getName()));
+                    plugin.playSuccessSound(playerRef);
                     setStatus(StatusTone.SUCCESS, "Teleported to " + region.getName() + ".");
                 }
             }
@@ -107,6 +108,7 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
                     setStatus(StatusTone.ERROR, "You do not have permission to load this region into selection.");
                 } else if (plugin.loadRegionSelection(playerRef, region)) {
                     plugin.send(playerRef, plugin.getConfigSnapshot().messages.selectionLoaded, Map.of("name", region.getName()));
+                    plugin.playSuccessSound(playerRef);
                     setStatus(StatusTone.SUCCESS, "Selection loaded from " + region.getName() + ".");
                 }
             }
@@ -129,6 +131,7 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
                             "name", region.getName(),
                             "pos", spawnPoint.toString()
                     ));
+                    plugin.playSuccessSound(playerRef);
                     setStatus(StatusTone.SUCCESS, "Spawn point saved at " + spawnPoint + ".");
                 }
             }
@@ -149,6 +152,7 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
                     setStatus(StatusTone.WARNING, "Dangerous action armed. Press Delete Region again to confirm.");
                 } else if (plugin.deleteRegion(region)) {
                     plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionDeleted, Map.of("name", region.getName()));
+                    plugin.playDeleteSound(playerRef);
                     plugin.openRegionBrowser(store, entityRef, playerRef, store.getExternalData().getWorld());
                     return;
                 }

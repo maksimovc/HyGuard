@@ -158,6 +158,14 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
         }
 
         RegionMember existing = region.getMember(target.uuid());
+        if (existing == null && region.getMembers().size() >= plugin.getConfigSnapshot().limits.maxMembersPerRegion) {
+            plugin.send(playerRef, plugin.getConfigSnapshot().messages.memberLimitReached, Map.of(
+                "name", region.getName(),
+                "limit", Integer.toString(plugin.getConfigSnapshot().limits.maxMembersPerRegion)
+            ));
+            setStatus(StatusTone.WARNING, "This region already reached the configured member limit.");
+            return;
+        }
         RegionMember updated = new RegionMember(target.uuid(), target.username(), selectedAddRole);
         region.addMember(updated);
         plugin.saveRegion(region);
@@ -170,6 +178,11 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
                         "name", region.getName(),
                         "role", updated.getRole().name()
                 ));
+        if (existing == null) {
+            plugin.playMemberAddedSound(playerRef);
+        } else {
+            plugin.playSuccessSound(playerRef);
+        }
         setStatus(StatusTone.SUCCESS,
                 (existing == null ? "Added " : "Updated ") + updated.getName() + " as " + RegionUiText.displayRole(updated.getRole()) + ".");
     }
@@ -206,6 +219,7 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
                 "name", region.getName(),
                 "role", nextRole.name()
         ));
+        plugin.playSuccessSound(playerRef);
         setStatus(StatusTone.SUCCESS, selected.name() + " is now " + RegionUiText.displayRole(nextRole) + ".");
     }
 
@@ -241,6 +255,7 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
                 "name", region.getName(),
                 "role", nextRole.name()
         ));
+        plugin.playSuccessSound(playerRef);
         setStatus(StatusTone.SUCCESS, selected.name() + " is now " + RegionUiText.displayRole(nextRole) + ".");
     }
 
@@ -274,6 +289,7 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
                     "player", selected.name(),
                     "name", region.getName()
             ));
+                plugin.playMemberRemovedSound(playerRef);
             selectedMemberUuid = null;
             removeArmed = false;
             setStatus(StatusTone.SUCCESS, "Removed " + selected.name() + " from the region.");

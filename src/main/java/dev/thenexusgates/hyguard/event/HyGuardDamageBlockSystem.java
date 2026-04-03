@@ -8,7 +8,7 @@ import com.hypixel.hytale.component.dependency.RootDependency;
 import com.hypixel.hytale.component.query.Query;
 import com.hypixel.hytale.component.system.EntityEventSystem;
 import com.hypixel.hytale.server.core.entity.entities.Player;
-import com.hypixel.hytale.server.core.event.events.ecs.UseBlockEvent;
+import com.hypixel.hytale.server.core.event.events.ecs.DamageBlockEvent;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
@@ -19,12 +19,12 @@ import dev.thenexusgates.hyguard.util.BlockPos;
 import java.util.Collections;
 import java.util.Set;
 
-public final class HyGuardUseBlockSystem extends EntityEventSystem<EntityStore, UseBlockEvent.Pre> {
+public final class HyGuardDamageBlockSystem extends EntityEventSystem<EntityStore, DamageBlockEvent> {
 
     private final HyGuardPlugin plugin;
 
-    public HyGuardUseBlockSystem(HyGuardPlugin plugin) {
-        super(UseBlockEvent.Pre.class);
+    public HyGuardDamageBlockSystem(HyGuardPlugin plugin) {
+        super(DamageBlockEvent.class);
         this.plugin = plugin;
     }
 
@@ -33,7 +33,7 @@ public final class HyGuardUseBlockSystem extends EntityEventSystem<EntityStore, 
                        ArchetypeChunk<EntityStore> archetypeChunk,
                        Store<EntityStore> store,
                        CommandBuffer<EntityStore> commandBuffer,
-                       UseBlockEvent.Pre event) {
+                       DamageBlockEvent event) {
         if (event == null || event.isCancelled() || event.getTargetBlock() == null) {
             return;
         }
@@ -46,15 +46,14 @@ public final class HyGuardUseBlockSystem extends EntityEventSystem<EntityStore, 
             return;
         }
 
+        BlockPos position = BlockPos.fromVector(event.getTargetBlock());
         if (plugin.isWand(player)) {
             event.setCancelled(true);
-            plugin.clearSelection(playerRef);
+            plugin.handleWandLeftClick(playerRef, world.getName(), position);
             return;
         }
 
-        BlockPos position = BlockPos.fromVector(event.getTargetBlock());
-
-        if (!plugin.evaluate(playerRef, world.getName(), position, ProtectionAction.BLOCK_INTERACT).allowed()) {
+        if (!plugin.evaluate(playerRef, world.getName(), position, ProtectionAction.BLOCK_BREAK).allowed()) {
             event.setCancelled(true);
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.protectionDenied);
         }

@@ -11,6 +11,8 @@ import dev.thenexusgates.hyguard.HyGuardPlugin;
 import dev.thenexusgates.hyguard.core.protection.ProtectionAction;
 import dev.thenexusgates.hyguard.core.protection.ProtectionResult;
 import dev.thenexusgates.hyguard.core.region.Region;
+import dev.thenexusgates.hyguard.core.region.RegionFlag;
+import dev.thenexusgates.hyguard.core.region.RegionFlagValue;
 import dev.thenexusgates.hyguard.util.BlockPos;
 import dev.thenexusgates.hyguard.visual.EnterExitMessageRenderer;
 
@@ -98,16 +100,22 @@ public final class PlayerMoveSystem {
         plugin.rememberPlayer(playerRef);
 
         String worldId = world.getName();
+        String playerUuid = playerRef.getUuid().toString();
         BlockPos currentPosition = new BlockPos(
                 (int) Math.floor(playerRef.getTransform().getPosition().getX()),
                 (int) Math.floor(playerRef.getTransform().getPosition().getY()),
                 (int) Math.floor(playerRef.getTransform().getPosition().getZ())
         );
+
+        PlayerState previousState = states.get(playerUuid);
+        if (previousState != null
+                && previousState.worldId().equalsIgnoreCase(worldId)
+                && previousState.position().equals(currentPosition)) {
+            return;
+        }
+
         List<Region> currentRegions = plugin.getRegionsAt(worldId, currentPosition);
         List<String> currentRegionIds = currentRegions.stream().map(Region::getId).toList();
-
-        String playerUuid = playerRef.getUuid().toString();
-        PlayerState previousState = states.get(playerUuid);
         if (previousState == null || !previousState.worldId().equalsIgnoreCase(worldId)) {
             Ref<EntityStore> entityRef = playerRef.getReference();
             if (entityRef != null && entityRef.isValid()) {
@@ -116,15 +124,12 @@ public final class PlayerMoveSystem {
             states.put(playerUuid, new PlayerState(worldId, currentPosition, currentRegionIds));
             return;
         }
-        if (previousState.position().equals(currentPosition) && previousState.regionIds().equals(currentRegionIds)) {
-            Ref<EntityStore> entityRef = playerRef.getReference();
-            if (entityRef != null && entityRef.isValid()) {
-                plugin.applyRegionState(entityRef.getStore(), entityRef, playerRef, worldId, currentPosition);
-            }
+        if (previousState.regionIds().equals(currentRegionIds)) {
+            states.put(playerUuid, new PlayerState(worldId, currentPosition, currentRegionIds));
             return;
         }
 
-        List<Region> previousRegions = plugin.getRegionsAt(previousState.worldId(), previousState.position());
+        List<Region> previousRegions = resolveRegions(previousState.regionIds());
         List<Region> exitedRegions = resolveExitedRegions(previousRegions, currentRegionIds);
         if (!exitedRegions.isEmpty()) {
             ProtectionResult exitResult = plugin.evaluate(playerRef, previousState.worldId(), previousState.position(), ProtectionAction.EXIT);
@@ -138,6 +143,13 @@ public final class PlayerMoveSystem {
 
         List<Region> enteredRegions = resolveEnteredRegions(currentRegions, previousState.regionIds());
         if (!enteredRegions.isEmpty()) {
+            Region restrictedEntryRegion = resolveRestrictedEntryRegion(playerRef, enteredRegions);
+            if (restrictedEntryRegion != null) {
+                if (teleportBack(playerRef, previousState.position())) {
+                    messageRenderer.sendEntryDenied(playerRef, restrictedEntryRegion);
+                }
+                return;
+            }
             ProtectionResult entryResult = plugin.evaluate(playerRef, worldId, currentPosition, ProtectionAction.ENTRY);
             if (!entryResult.allowed()) {
                 if (teleportBack(playerRef, previousState.position())) {
@@ -154,6 +166,29 @@ public final class PlayerMoveSystem {
             plugin.applyRegionState(entityRef.getStore(), entityRef, playerRef, worldId, currentPosition);
         }
         states.put(playerUuid, new PlayerState(worldId, currentPosition, currentRegionIds));
+    }
+
+    private List<Region> resolveRegions(List<String> regionIds) {
+        ArrayList<Region> regions = new ArrayList<>(regionIds.size());
+        for (String regionId : regionIds) {
+            Region region = plugin.findRegionById(regionId);
+            if (region != null) {
+                regions.add(region);
+            }
+        }
+        return regions;
+    }
+
+    private Region resolveRestrictedEntryRegion(PlayerRef playerRef, List<Region> enteredRegions) {
+        if (plugin.canBypassProtection(playerRef)) {
+            return null;
+        }
+        for (Region region : enteredRegions) {
+            if (!plugin.isFlagAllowed(playerRef, region, RegionFlag.ENTRY_PLAYERS, RegionFlagValue.Mode.ALLOW)) {
+                return region;
+            }
+        }
+        return null;
     }
 
     private boolean teleportBack(PlayerRef playerRef, BlockPos position) {

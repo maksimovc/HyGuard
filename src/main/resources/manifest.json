@@ -1,7 +1,7 @@
 {
     "Group": "thenexusgates",
     "Name": "HyGuard",
-    "Version": "0.1.0",
+    "Version": "1.0.0",
     "Description": "Territory protection with cuboid region selection and ECS-based block protection.",
     "Authors": [
         {

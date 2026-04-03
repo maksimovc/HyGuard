@@ -41,7 +41,7 @@ public final class EnterExitMessageRenderer {
             }
             return;
         }
-        playerRef.sendMessage(Message.raw(plugin.message(customMessage, Map.of("name", region.getName()))));
+        playerRef.sendMessage(plugin.rawMessage(customMessage, Map.of("name", region.getName()), false));
     }
 
     private String resolveFlagText(Region region, RegionFlag messageFlag) {

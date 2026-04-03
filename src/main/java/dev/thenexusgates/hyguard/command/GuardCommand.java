@@ -27,11 +27,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 public final class GuardCommand extends AbstractPlayerCommand {
 
-    private record HelpTopic(String command, String usage, String description, String example, String permission) {
+    private record HelpTopic(String command, String usage, String descriptionKey, String example, String permissionKey) {
     }
 
     private enum SelectionEditMode {
@@ -57,7 +56,6 @@ public final class GuardCommand extends AbstractPlayerCommand {
         }
     }
 
-    private static final Pattern REGION_NAME_PATTERN = Pattern.compile("^[a-zA-Z0-9_-]{3,32}$");
     private static final String GLOBAL_REGION_NAME = "__global__";
     private static final int HELP_PAGE_SIZE = 8;
     private static final int MEMBER_PAGE_SIZE = 10;
@@ -71,6 +69,7 @@ public final class GuardCommand extends AbstractPlayerCommand {
         super("hg", "HyGuard command");
         this.plugin = plugin;
         this.confirmArg = withFlagArg("confirm", "Confirm destructive actions");
+        requirePermission(plugin.getConfigSnapshot().general.usePermission);
         setAllowsExtraArguments(true);
         addAliases("guard");
     }
@@ -83,6 +82,10 @@ public final class GuardCommand extends AbstractPlayerCommand {
                            World world) {
         plugin.rememberPlayer(playerRef);
         String[] args = parseArgs(context.getInputString());
+        if (!plugin.hasUsePermission(playerRef)) {
+            plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
+            return;
+        }
         if (args.length == 0) {
             sendHelp(playerRef, new String[] { "help" });
             return;
@@ -123,12 +126,19 @@ public final class GuardCommand extends AbstractPlayerCommand {
     }
 
     private void handleWand(Store<EntityStore> store, Ref<EntityStore> entityRef, PlayerRef playerRef) {
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.wandPermission, false)) {
+            return;
+        }
         if (plugin.giveWand(store, entityRef, playerRef)) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.wandGiven);
+            plugin.playSuccessSound(playerRef);
         }
     }
 
     private void handleCreate(PlayerRef playerRef, World world, String[] args) {
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.createPermission, true)) {
+            return;
+        }
         if (args.length < 2) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidRegionName);
             return;
@@ -137,6 +147,7 @@ public final class GuardCommand extends AbstractPlayerCommand {
         if (name == null) {
             return;
         }
+        boolean serverOwned = hasServerFlag(args);
         if (GLOBAL_REGION_NAME.equalsIgnoreCase(name)) {
             if (!plugin.hasAdminPermission(playerRef)) {
                 plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
@@ -147,15 +158,30 @@ public final class GuardCommand extends AbstractPlayerCommand {
                 return;
             }
             Region region = plugin.createGlobalRegion(playerRef, world.getName(), GLOBAL_REGION_NAME);
-            plugin.getLogger().at(java.util.logging.Level.INFO).log("[HyGuard] region created: world=%s name=%s actor=%s global=true", world.getName(), region.getName(), playerRef.getUsername());
+            plugin.getLogger().at(java.util.logging.Level.INFO).log("[HyGuard] region created: world=%s name=%s actor=%s global=true serverOwned=true", world.getName(), region.getName(), playerRef.getUsername());
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionCreated, Map.of("name", region.getName()));
+            plugin.playSuccessSound(playerRef);
             return;
         }
         if (plugin.findRegionByName(world.getName(), name) != null) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionAlreadyExists);
             return;
         }
-        Region region = plugin.createRegion(playerRef, world.getName(), name);
+        if (serverOwned && !plugin.hasAdminPermission(playerRef)) {
+            plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
+            return;
+        }
+        if (!serverOwned
+                && !plugin.hasAdminPermission(playerRef)
+                && plugin.countOwnedRegions(playerRef.getUuid().toString()) >= plugin.getConfigSnapshot().limits.maxRegionsPerPlayer) {
+            plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionLimitReached, Map.of(
+                    "limit", Integer.toString(plugin.getConfigSnapshot().limits.maxRegionsPerPlayer)
+            ));
+            return;
+        }
+        Region region = serverOwned
+                ? plugin.createServerRegion(playerRef, world.getName(), name)
+                : plugin.createRegion(playerRef, world.getName(), name);
         if (region == null) {
             SelectionSession session = plugin.getSelectionService().get(playerRef.getUuid().toString());
             if (session != null && session.isComplete() && world.getName().equalsIgnoreCase(session.getWorldId())) {
@@ -166,10 +192,14 @@ public final class GuardCommand extends AbstractPlayerCommand {
             return;
         }
         plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionCreated, Map.of("name", region.getName()));
-        plugin.getLogger().at(java.util.logging.Level.INFO).log("[HyGuard] region created: world=%s name=%s actor=%s global=false", world.getName(), region.getName(), playerRef.getUsername());
+        plugin.playSuccessSound(playerRef);
+        plugin.getLogger().at(java.util.logging.Level.INFO).log("[HyGuard] region created: world=%s name=%s actor=%s global=false serverOwned=%s", world.getName(), region.getName(), playerRef.getUsername(), serverOwned);
     }
 
     private void handleDelete(PlayerRef playerRef, World world, String[] args, boolean confirmRequested) {
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.deletePermission, true)) {
+            return;
+        }
         if (args.length < 2) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionNotFound);
             return;
@@ -190,10 +220,14 @@ public final class GuardCommand extends AbstractPlayerCommand {
         if (plugin.deleteRegion(region)) {
             plugin.getLogger().at(java.util.logging.Level.INFO).log("[HyGuard] region deleted: world=%s name=%s actor=%s", world.getName(), region.getName(), playerRef.getUsername());
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionDeleted, Map.of("name", region.getName()));
+            plugin.playDeleteSound(playerRef);
         }
     }
 
     private void handleInfo(PlayerRef playerRef, World world, String[] args) {
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.infoPermission, false)) {
+            return;
+        }
         Region region = args.length >= 2 ? plugin.findRegionByName(world.getName(), args[1]) : plugin.regionAt(world, playerRef);
         if (region == null) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionNotFound);
@@ -209,6 +243,9 @@ public final class GuardCommand extends AbstractPlayerCommand {
     }
 
     private void handleFlags(PlayerRef playerRef, World world, String[] args) {
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.flagsViewPermission, false)) {
+            return;
+        }
         Region region = requireExistingRegion(playerRef, world, args);
         if (region == null) {
             return;
@@ -223,7 +260,7 @@ public final class GuardCommand extends AbstractPlayerCommand {
         for (RegionFlag flag : RegionFlag.values()) {
             RegionFlagValue flagValue = region.getFlags().get(flag);
             String value = formatFlagValue(flagValue);
-            lines.add(plugin.message(plugin.getConfigSnapshot().messages.flagListEntry, Map.of(
+            lines.add(plugin.message(playerRef, plugin.getConfigSnapshot().messages.flagListEntry, Map.of(
                     "flag", flag.name(),
                     "value", value
             )));
@@ -238,6 +275,9 @@ public final class GuardCommand extends AbstractPlayerCommand {
     }
 
     private void handleList(PlayerRef playerRef, World world) {
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.listPermission, false)) {
+            return;
+        }
         List<Region> regions = new ArrayList<>(plugin.getWorldRegions(world.getName()));
         if (regions.isEmpty()) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionListEmpty);
@@ -255,6 +295,9 @@ public final class GuardCommand extends AbstractPlayerCommand {
     }
 
     private void handleSelect(PlayerRef playerRef, World world, String[] args) {
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.selectPermission, true)) {
+            return;
+        }
         Region region = requireManageableRegion(playerRef, world, args);
         if (region == null) {
             return;
@@ -269,6 +312,9 @@ public final class GuardCommand extends AbstractPlayerCommand {
     }
 
     private void handleRedefine(PlayerRef playerRef, World world, String[] args) {
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.redefinePermission, true)) {
+            return;
+        }
         Region region = requireManageableRegion(playerRef, world, args);
         if (region == null) {
             return;
@@ -279,7 +325,10 @@ public final class GuardCommand extends AbstractPlayerCommand {
         }
 
         switch (plugin.redefineRegion(playerRef, world.getName(), region)) {
-            case SUCCESS -> plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionRedefined, Map.of("name", region.getName()));
+            case SUCCESS -> {
+                plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionRedefined, Map.of("name", region.getName()));
+                plugin.playSuccessSound(playerRef);
+            }
             case WORLD_MISMATCH -> plugin.send(playerRef, plugin.getConfigSnapshot().messages.selectionWorldMismatch);
             case OVERLAP_CONFLICT -> plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionOverlapConflict);
             case SELECTION_INCOMPLETE -> plugin.send(playerRef, plugin.getConfigSnapshot().messages.selectionIncomplete);
@@ -287,6 +336,9 @@ public final class GuardCommand extends AbstractPlayerCommand {
     }
 
     private void handlePriority(PlayerRef playerRef, World world, String[] args) {
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.priorityPermission, true)) {
+            return;
+        }
         if (args.length < 3) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidPriority);
             return;
@@ -304,7 +356,7 @@ public final class GuardCommand extends AbstractPlayerCommand {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidPriority);
             return;
         }
-        if (priority < 0 || priority > 100) {
+        if (priority < 0 || priority > plugin.getConfigSnapshot().limits.maxPriority) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidPriority);
             return;
         }
@@ -316,9 +368,13 @@ public final class GuardCommand extends AbstractPlayerCommand {
                 "name", region.getName(),
                 "priority", Integer.toString(priority)
         ));
+        plugin.playSuccessSound(playerRef);
     }
 
     private void handleSelectionEdit(PlayerRef playerRef, World world, String[] args, SelectionEditMode mode) {
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.selectionEditPermission, false)) {
+            return;
+        }
         if (args.length < 3) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidSelectionEdit);
             return;
@@ -347,7 +403,7 @@ public final class GuardCommand extends AbstractPlayerCommand {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidSelectionAmount);
             return;
         }
-        if (amount <= 0 || amount > 500) {
+        if (amount <= 0 || amount > plugin.getConfigSnapshot().limits.maxSelectionEditAmount) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidSelectionAmount);
             return;
         }
@@ -374,9 +430,13 @@ public final class GuardCommand extends AbstractPlayerCommand {
             "max", max.toString(),
             "size", plugin.formatSelectionSize(plugin.getSelectionService().get(playerUuid))
         ));
+        plugin.playSuccessSound(playerRef);
     }
 
     private void handleMember(PlayerRef playerRef, World world, String[] args, boolean confirmRequested) {
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.memberPermission, true)) {
+            return;
+        }
         if (args.length < 2) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.helpUnknownTopic);
             return;
@@ -421,6 +481,13 @@ public final class GuardCommand extends AbstractPlayerCommand {
         }
 
         RegionMember existing = region.getMember(target.uuid());
+        if (existing == null && region.getMembers().size() >= plugin.getConfigSnapshot().limits.maxMembersPerRegion) {
+            plugin.send(playerRef, plugin.getConfigSnapshot().messages.memberLimitReached, Map.of(
+                "name", region.getName(),
+                "limit", Integer.toString(plugin.getConfigSnapshot().limits.maxMembersPerRegion)
+            ));
+            return;
+        }
         boolean confirm = confirmRequested || hasConfirmFlag(args);
         if (existing != null && !confirm) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.memberReplaceConfirm, Map.of(
@@ -441,6 +508,11 @@ public final class GuardCommand extends AbstractPlayerCommand {
                         "name", region.getName(),
                         "role", updated.getRole().name()
                 ));
+        if (existing == null) {
+            plugin.playMemberAddedSound(playerRef);
+        } else {
+            plugin.playSuccessSound(playerRef);
+        }
     }
 
     private void handleMemberRemove(PlayerRef playerRef, World world, String[] args) {
@@ -471,6 +543,7 @@ public final class GuardCommand extends AbstractPlayerCommand {
                     "player", target.getName(),
                     "name", region.getName()
             ));
+            plugin.playMemberRemovedSound(playerRef);
         }
     }
 
@@ -508,6 +581,7 @@ public final class GuardCommand extends AbstractPlayerCommand {
                 "name", region.getName(),
                 "role", newRole.name()
         ));
+        plugin.playSuccessSound(playerRef);
     }
 
     private void handleMemberList(PlayerRef playerRef, World world, String[] args) {
@@ -535,7 +609,7 @@ public final class GuardCommand extends AbstractPlayerCommand {
 
         List<String> lines = new ArrayList<>(members.size());
         for (RegionMember member : members) {
-            lines.add(plugin.message(plugin.getConfigSnapshot().messages.memberListEntry, Map.of(
+            lines.add(plugin.message(playerRef, plugin.getConfigSnapshot().messages.memberListEntry, Map.of(
                     "role", member.getRole().name(),
                     "player", member.getName()
             )));
@@ -549,6 +623,9 @@ public final class GuardCommand extends AbstractPlayerCommand {
     }
 
     private void handleFlag(PlayerRef playerRef, World world, String[] args) {
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.flagEditPermission, true)) {
+            return;
+        }
         if (args.length < 4) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlagValue);
             return;
@@ -575,6 +652,7 @@ public final class GuardCommand extends AbstractPlayerCommand {
                     "name", region.getName(),
                     "flag", flag.name()
             ));
+                plugin.playSuccessSound(playerRef);
             return;
         }
 
@@ -604,9 +682,13 @@ public final class GuardCommand extends AbstractPlayerCommand {
                 "flag", flag.name(),
                 "value", mode.name()
         ));
+        plugin.playSuccessSound(playerRef);
     }
 
     private void handleTeleport(Store<EntityStore> store, Ref<EntityStore> entityRef, PlayerRef playerRef, World world, String[] args) {
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.teleportPermission, true)) {
+            return;
+        }
         Region region = requireExistingRegion(playerRef, world, args, true);
         if (region == null) {
             return;
@@ -621,9 +703,13 @@ public final class GuardCommand extends AbstractPlayerCommand {
         }
         plugin.getLogger().at(java.util.logging.Level.INFO).log("[HyGuard] region teleport: world=%s name=%s actor=%s", world.getName(), region.getName(), playerRef.getUsername());
         plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionTeleported, Map.of("name", region.getName()));
+        plugin.playSuccessSound(playerRef);
     }
 
     private void handleSetSpawn(PlayerRef playerRef, World world, String[] args) {
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.setSpawnPermission, true)) {
+            return;
+        }
         Region region = requireExistingRegion(playerRef, world, args, true);
         if (region == null) {
             return;
@@ -648,9 +734,13 @@ public final class GuardCommand extends AbstractPlayerCommand {
                 "name", region.getName(),
                 "pos", spawnPoint.toString()
         ));
+        plugin.playSuccessSound(playerRef);
     }
 
     private void handleGui(Store<EntityStore> store, Ref<EntityStore> entityRef, PlayerRef playerRef, World world, String[] args) {
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.guiPermission, false)) {
+            return;
+        }
         if (args.length >= 2) {
             Region region = resolveRegionReference(playerRef, world, args[1]);
             if (region == null) {
@@ -664,8 +754,7 @@ public final class GuardCommand extends AbstractPlayerCommand {
     }
 
     private void handleBackup(PlayerRef playerRef) {
-        if (!plugin.hasAdminPermission(playerRef)) {
-            plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.backupPermission, true)) {
             return;
         }
         plugin.send(playerRef, plugin.getConfigSnapshot().messages.backupStarted);
@@ -673,8 +762,7 @@ public final class GuardCommand extends AbstractPlayerCommand {
     }
 
     private void handleDebug(PlayerRef playerRef, World world, String[] args) {
-        if (!plugin.hasAdminPermission(playerRef)) {
-            plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.debugPermission, true)) {
             return;
         }
         if (args.length < 2 || !"pos".equalsIgnoreCase(args[1])) {
@@ -709,30 +797,30 @@ public final class GuardCommand extends AbstractPlayerCommand {
     }
 
     private void handleBypass(PlayerRef playerRef) {
-        if (!plugin.hasBypassPermission(playerRef) && !plugin.hasAdminPermission(playerRef)) {
-            plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.bypassTogglePermission, true)) {
             return;
         }
         boolean enabled = plugin.toggleBypass(playerRef);
         plugin.send(playerRef, enabled ? plugin.getConfigSnapshot().messages.bypassEnabled : plugin.getConfigSnapshot().messages.bypassDisabled);
+        plugin.playSuccessSound(playerRef);
     }
 
     private void handleSave(PlayerRef playerRef) {
-        if (!plugin.hasAdminPermission(playerRef)) {
-            plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.savePermission, true)) {
             return;
         }
         plugin.flushRegionSaves();
         plugin.send(playerRef, plugin.getConfigSnapshot().messages.saveCompleted);
+        plugin.playSuccessSound(playerRef);
     }
 
     private void handleReload(PlayerRef playerRef) {
-        if (!plugin.hasAdminPermission(playerRef)) {
-            plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
+        if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.reloadPermission, true)) {
             return;
         }
         plugin.reloadState();
         plugin.send(playerRef, plugin.getConfigSnapshot().messages.reloadCompleted);
+        plugin.playSuccessSound(playerRef);
     }
 
     private void sendHelp(PlayerRef playerRef, String[] args) {
@@ -755,9 +843,9 @@ public final class GuardCommand extends AbstractPlayerCommand {
 
         plugin.send(playerRef, plugin.getConfigSnapshot().messages.helpDetailHeader, Map.of("command", topic.command()));
         plugin.send(playerRef, plugin.getConfigSnapshot().messages.helpDetailUsage, Map.of("usage", topic.usage()));
-        plugin.send(playerRef, plugin.getConfigSnapshot().messages.helpDetailDescription, Map.of("description", topic.description()));
+        plugin.send(playerRef, plugin.getConfigSnapshot().messages.helpDetailDescription, Map.of("description", plugin.text(playerRef, topic.descriptionKey(), Map.of())));
         plugin.send(playerRef, plugin.getConfigSnapshot().messages.helpDetailExample, Map.of("example", topic.example()));
-        plugin.send(playerRef, plugin.getConfigSnapshot().messages.helpDetailPermission, Map.of("permission", topic.permission()));
+        plugin.send(playerRef, plugin.getConfigSnapshot().messages.helpDetailPermission, Map.of("permission", plugin.text(playerRef, topic.permissionKey(), Map.of())));
     }
 
     private Region requireManageableRegion(PlayerRef playerRef, World world, String[] args) {
@@ -962,9 +1050,9 @@ public final class GuardCommand extends AbstractPlayerCommand {
         List<HelpTopic> topics = new ArrayList<>(HELP_TOPICS.values());
         List<String> lines = new ArrayList<>(topics.size());
         for (HelpTopic topic : topics) {
-            lines.add(plugin.message(plugin.getConfigSnapshot().messages.helpEntry, Map.of(
+            lines.add(plugin.message(playerRef, plugin.getConfigSnapshot().messages.helpEntry, Map.of(
                     "usage", topic.usage(),
-                    "description", topic.description()
+                    "description", plugin.text(playerRef, topic.descriptionKey(), Map.of())
             )));
         }
         sendPaged(playerRef, plugin.getConfigSnapshot().messages.helpPageHeader, Map.of(), lines, page, HELP_PAGE_SIZE);
@@ -994,7 +1082,7 @@ public final class GuardCommand extends AbstractPlayerCommand {
         int fromIndex = (page - 1) * pageSize;
         int toIndex = Math.min(lines.size(), fromIndex + pageSize);
         for (String line : lines.subList(fromIndex, toIndex)) {
-            plugin.send(playerRef, line);
+            plugin.sendRaw(playerRef, line);
         }
     }
 
@@ -1081,6 +1169,15 @@ public final class GuardCommand extends AbstractPlayerCommand {
         return false;
     }
 
+    private static boolean hasServerFlag(String[] args) {
+        for (String arg : args) {
+            if ("--server".equalsIgnoreCase(arg)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static Integer parsePositiveInt(String raw) {
         try {
             int value = Integer.parseInt(raw);
@@ -1091,8 +1188,11 @@ public final class GuardCommand extends AbstractPlayerCommand {
     }
 
     private String validateRegionName(PlayerRef playerRef, String raw) {
-        if (raw == null || !REGION_NAME_PATTERN.matcher(raw).matches() || !plugin.isValidRegionName(raw)) {
-            plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidRegionName);
+        if (raw == null || !plugin.isValidRegionName(raw)) {
+            plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidRegionName, Map.of(
+                    "min", Integer.toString(plugin.getConfigSnapshot().limits.regionNameMinLength),
+                    "max", Integer.toString(plugin.getConfigSnapshot().limits.regionNameMaxLength)
+            ));
             return null;
         }
         return raw;
@@ -1100,32 +1200,42 @@ public final class GuardCommand extends AbstractPlayerCommand {
 
     private static Map<String, HelpTopic> createHelpTopics() {
         LinkedHashMap<String, HelpTopic> topics = new LinkedHashMap<>();
-        registerHelp(topics, new HelpTopic("wand", "/hg wand", "Give yourself the HyGuard selection wand.", "/hg wand", "player"));
-        registerHelp(topics, new HelpTopic("create", "/hg create <name>", "Create a region from your current two-point selection.", "/hg create spawn", "manage own regions"));
-        registerHelp(topics, new HelpTopic("delete", "/hg delete <name> --confirm", "Delete a region after explicit confirmation.", "/hg delete spawn --confirm", "manager or admin"));
-        registerHelp(topics, new HelpTopic("info", "/hg info [name]", "Show information about the current region or a named region.", "/hg info spawn", "player"));
-        registerHelp(topics, new HelpTopic("list", "/hg list", "List region names in the current world.", "/hg list", "player"));
-        registerHelp(topics, new HelpTopic("select", "/hg select <name>", "Load a region's bounds into your current selection session.", "/hg select spawn", "manager or admin"));
-        registerHelp(topics, new HelpTopic("redefine", "/hg redefine <name>", "Replace a region's bounds with your current selection.", "/hg redefine spawn", "manager or admin"));
-        registerHelp(topics, new HelpTopic("expand", "/hg expand <dir> <amount>", "Expand your current selection in one direction.", "/hg expand north 5", "player"));
-        registerHelp(topics, new HelpTopic("contract", "/hg contract <dir> <amount>", "Contract your current selection in one direction.", "/hg contract up 2", "player"));
-        registerHelp(topics, new HelpTopic("shift", "/hg shift <dir> <amount>", "Move your current selection without resizing it.", "/hg shift east 16", "player"));
-        registerHelp(topics, new HelpTopic("priority", "/hg priority <name> <value>", "Set a region priority for overlap resolution.", "/hg priority spawn 10", "manager or admin"));
-        registerHelp(topics, new HelpTopic("flag", "/hg flag <name> <flag> <value|clear> [text]", "Set or clear a single flag on a region.", "/hg flag spawn PVP ALLOW", "manager or admin"));
-        registerHelp(topics, new HelpTopic("flags", "/hg flags <name> [page]", "List all flags and effective stored values for a region.", "/hg flags spawn", "player"));
-        registerHelp(topics, new HelpTopic("member", "/hg member <add|remove|role|list> ...", "Manage region members and their roles.", "/hg member add spawn Player2 TRUSTED", "owner, co-owner, or admin"));
-        registerHelp(topics, new HelpTopic("tp", "/hg tp <name>", "Teleport yourself to a region spawn or center.", "/hg tp spawn", "member/admin access"));
-        registerHelp(topics, new HelpTopic("setspawn", "/hg setspawn <name>", "Store your current position as the region spawn point.", "/hg setspawn spawn", "owner, co-owner, or admin"));
-        registerHelp(topics, new HelpTopic("gui", "/hg gui [name]", "Open the region browser UI or jump straight to a region detail page.", "/hg gui spawn", "player"));
-        registerHelp(topics, new HelpTopic("backup", "/hg backup", "Create a manual asynchronous backup of all region files.", "/hg backup", "admin"));
-        registerHelp(topics, new HelpTopic("debug", "/hg debug pos", "Show all regions and active flags at your current position.", "/hg debug pos", "admin"));
-        registerHelp(topics, new HelpTopic("bypass", "/hg bypass", "Toggle protection bypass mode.", "/hg bypass", "bypass/admin"));
-        registerHelp(topics, new HelpTopic("save", "/hg save", "Flush pending region saves to disk.", "/hg save", "admin"));
-        registerHelp(topics, new HelpTopic("reload", "/hg reload", "Reload config and region cache from disk.", "/hg reload", "admin"));
+        registerHelp(topics, new HelpTopic("wand", "/hg wand", "hyguard.help.topic.wand.description", "/hg wand", "hyguard.help.permission.player"));
+        registerHelp(topics, new HelpTopic("create", "/hg create <name> [--server]", "hyguard.help.topic.create.description", "/hg create spawn --server", "hyguard.help.permission.create"));
+        registerHelp(topics, new HelpTopic("delete", "/hg delete <name> --confirm", "hyguard.help.topic.delete.description", "/hg delete spawn --confirm", "hyguard.help.permission.manager_or_admin"));
+        registerHelp(topics, new HelpTopic("info", "/hg info [name]", "hyguard.help.topic.info.description", "/hg info spawn", "hyguard.help.permission.player"));
+        registerHelp(topics, new HelpTopic("list", "/hg list", "hyguard.help.topic.list.description", "/hg list", "hyguard.help.permission.player"));
+        registerHelp(topics, new HelpTopic("select", "/hg select <name>", "hyguard.help.topic.select.description", "/hg select spawn", "hyguard.help.permission.manager_or_admin"));
+        registerHelp(topics, new HelpTopic("redefine", "/hg redefine <name>", "hyguard.help.topic.redefine.description", "/hg redefine spawn", "hyguard.help.permission.manager_or_admin"));
+        registerHelp(topics, new HelpTopic("expand", "/hg expand <dir> <amount>", "hyguard.help.topic.expand.description", "/hg expand north 5", "hyguard.help.permission.player"));
+        registerHelp(topics, new HelpTopic("contract", "/hg contract <dir> <amount>", "hyguard.help.topic.contract.description", "/hg contract up 2", "hyguard.help.permission.player"));
+        registerHelp(topics, new HelpTopic("shift", "/hg shift <dir> <amount>", "hyguard.help.topic.shift.description", "/hg shift east 16", "hyguard.help.permission.player"));
+        registerHelp(topics, new HelpTopic("priority", "/hg priority <name> <value>", "hyguard.help.topic.priority.description", "/hg priority spawn 10", "hyguard.help.permission.manager_or_admin"));
+        registerHelp(topics, new HelpTopic("flag", "/hg flag <name> <flag> <value|clear> [text]", "hyguard.help.topic.flag.description", "/hg flag spawn PVP ALLOW", "hyguard.help.permission.manager_or_admin"));
+        registerHelp(topics, new HelpTopic("flags", "/hg flags <name> [page]", "hyguard.help.topic.flags.description", "/hg flags spawn", "hyguard.help.permission.player"));
+        registerHelp(topics, new HelpTopic("member", "/hg member <add|remove|role|list> ...", "hyguard.help.topic.member.description", "/hg member add spawn Player2 TRUSTED", "hyguard.help.permission.owner_coowner_admin"));
+        registerHelp(topics, new HelpTopic("tp", "/hg tp <name>", "hyguard.help.topic.tp.description", "/hg tp spawn", "hyguard.help.permission.member_admin_access"));
+        registerHelp(topics, new HelpTopic("setspawn", "/hg setspawn <name>", "hyguard.help.topic.setspawn.description", "/hg setspawn spawn", "hyguard.help.permission.owner_coowner_admin"));
+        registerHelp(topics, new HelpTopic("gui", "/hg gui [name]", "hyguard.help.topic.gui.description", "/hg gui spawn", "hyguard.help.permission.player"));
+        registerHelp(topics, new HelpTopic("backup", "/hg backup", "hyguard.help.topic.backup.description", "/hg backup", "hyguard.help.permission.admin"));
+        registerHelp(topics, new HelpTopic("debug", "/hg debug pos", "hyguard.help.topic.debug.description", "/hg debug pos", "hyguard.help.permission.admin"));
+        registerHelp(topics, new HelpTopic("bypass", "/hg bypass", "hyguard.help.topic.bypass.description", "/hg bypass", "hyguard.help.permission.bypass_or_admin"));
+        registerHelp(topics, new HelpTopic("save", "/hg save", "hyguard.help.topic.save.description", "/hg save", "hyguard.help.permission.admin"));
+        registerHelp(topics, new HelpTopic("reload", "/hg reload", "hyguard.help.topic.reload.description", "/hg reload", "hyguard.help.permission.admin"));
         return topics;
     }
 
     private static void registerHelp(Map<String, HelpTopic> topics, HelpTopic topic) {
         topics.put(topic.command(), topic);
+    }
+
+    private boolean requirePermission(PlayerRef playerRef, String permission, boolean allowAdminOverride) {
+        boolean allowed = allowAdminOverride
+                ? plugin.hasPermissionOrAdmin(playerRef, permission)
+                : plugin.hasPermission(playerRef, permission);
+        if (!allowed) {
+            plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
+        }
+        return allowed;
     }
 }

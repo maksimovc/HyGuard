@@ -49,7 +49,7 @@ public final class HyGuardBreakBlockSystem extends EntityEventSystem<EntityStore
         BlockPos position = BlockPos.fromVector(event.getTargetBlock());
         if (plugin.isWand(player)) {
             event.setCancelled(true);
-            plugin.cycleSelectionPoint(playerRef, world.getName(), position);
+            plugin.handleWandLeftClick(playerRef, world.getName(), position);
             return;
         }
 
@@ -66,6 +66,6 @@ public final class HyGuardBreakBlockSystem extends EntityEventSystem<EntityStore
 
     @Override
     public Set<Dependency<EntityStore>> getDependencies() {
-        return Collections.singleton(RootDependency.last());
+        return Collections.singleton(RootDependency.first());
     }
 }

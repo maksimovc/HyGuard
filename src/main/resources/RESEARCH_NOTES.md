@@ -11,9 +11,11 @@ Implemented on verified public APIs:
 - Selection visualization through `ParticleUtil.spawnParticleEffect(...)` using verified public particle-system asset ids.
 - Region browser, detail, member manager, and flag editor pages through `InteractiveCustomUIPage`.
 - Disconnect cleanup through `PlayerDisconnectEvent`, including selection, bypass, move-state, and visual subscription cleanup.
-- Runtime protection for block break, block place, block interact, player damage, PVP, fall damage, mob damage to players, item drop, item pickup, entry, and exit.
+- Runtime protection for block break, block place, block interact, player damage, PVP, fall damage, mob damage to players, item drop, item pickup, entry, exit, `ENTRY_PLAYERS`, and `INVINCIBLE`.
 - Player state enforcement for `GAME_MODE` and `FLY`.
 - Manual and scheduled backups with retention pruning.
+- Selection overlay refresh consolidated into one shared scheduled task instead of one task per active player selection.
+- Movement polling now skips unchanged player positions and unchanged region sets to reduce repeated lookup and state-application work on busy servers.
 
 ## Verified Public API Surfaces Used
 
@@ -55,8 +57,6 @@ Other flags are still stored and editable but remain unimplemented by this mod b
 - `INTERACT_INVENTORY`
 - `ANIMAL_DAMAGE`
 - `LIGHTNING`
-- `ENTRY_PLAYERS`
-- `INVINCIBLE`
 - `WEATHER_LOCK`
 - `TIME_LOCK`
 - `SPAWN_LOCATION`
@@ -439,6 +439,7 @@ Conclusion:
 - `HytaleServer.SCHEDULED_EXECUTOR` is a proven shared scheduler for periodic tasks.
 - A plugin-owned `ScheduledExecutorService` is also an accepted workspace pattern when task isolation is useful.
 - No `TickEvent` or `ServerTickEvent` usage was found in local mods; scheduled executors are the verified path.
+- For HyGuard release hardening, the selection visualizer now uses a single shared periodic redraw task to avoid one scheduled task per active player selection.
 
 ### A5. Player disconnect event
 

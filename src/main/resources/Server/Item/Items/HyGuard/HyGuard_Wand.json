@@ -1,14 +1,29 @@
 {
   "Id": "HyGuard_Wand",
   "MaxStack": 1,
-  "Quality": "Rare",
-  "Icon": "Icons/ItemsGenerated/HyGuard/wand.png",
+  "Quality": "Tool",
+  "Icon": "Icons/ItemsGenerated/HyGuard/hyguard_wand.png",
   "PlayerAnimationsId": "Item",
   "Categories": [
     "HyGuard.Tools"
   ],
+  "Texture": "Items/Block_Spawner_Block_Large_Texture.png",
+  "Model": "Items/Block_Spawner_Block.blockymodel",
+  "Scale": 0.6,
+  "IconProperties": {
+    "Rotation": [
+      20.0,
+      45.0,
+      20.0
+    ],
+    "Scale": 0.65,
+    "Translation": [
+      4.0,
+      -4.0
+    ]
+  },
   "TranslationProperties": {
-    "Name": "Hytale Guard Wand",
-    "Description": "Left click cycles selection point 1, point 2, point 1, point 2."
+    "Name": "items.hyguard_wand.name",
+    "Description": "items.hyguard_wand.description"
   }
 }

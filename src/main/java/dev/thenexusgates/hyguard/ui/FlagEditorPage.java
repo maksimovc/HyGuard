@@ -213,6 +213,7 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
                 "flag", flag.name(),
                 "value", mode.name()
         ));
+        plugin.playSuccessSound(playerRef);
         setStatus(StatusTone.SUCCESS, RegionUiText.displayFlag(flag) + " updated to " + mode.name().toLowerCase(Locale.ROOT) + ".");
     }
 
@@ -245,6 +246,7 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
                     "name", region.getName(),
                     "flag", flag.name()
             ));
+                plugin.playSuccessSound(playerRef);
             setStatus(StatusTone.SUCCESS, RegionUiText.displayFlag(flag) + " was cleared.");
             return;
         }
@@ -263,6 +265,7 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
                 "flag", flag.name(),
                 "value", textValue
         ));
+        plugin.playSuccessSound(playerRef);
         setStatus(StatusTone.SUCCESS, RegionUiText.displayFlag(flag) + " saved.");
     }
 
@@ -286,6 +289,7 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
                 "flag", RegionFlag.GAME_MODE.name(),
                 "value", modeName
         ));
+        plugin.playSuccessSound(playerRef);
         setStatus(StatusTone.SUCCESS, "Game mode lock updated to " + capitalize(modeName) + ".");
     }
 
@@ -317,6 +321,7 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
                 "name", region.getName(),
                 "flag", flag.name()
         ));
+        plugin.playSuccessSound(playerRef);
         setStatus(StatusTone.SUCCESS, RegionUiText.displayFlag(flag) + " was cleared.");
     }
 

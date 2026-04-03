@@ -17,13 +17,13 @@ import com.hypixel.hytale.server.core.inventory.ItemStack;
 import com.hypixel.hytale.server.core.modules.entity.EntityModule;
 import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
 import com.hypixel.hytale.server.core.modules.entity.teleport.Teleport;
-import com.hypixel.hytale.server.core.permissions.PermissionsModule;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.Universe;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import dev.thenexusgates.hyguard.asset.HyGuardAssetPack;
 import dev.thenexusgates.hyguard.command.GuardCommand;
 import dev.thenexusgates.hyguard.config.HyGuardConfig;
 import dev.thenexusgates.hyguard.core.protection.BypassHandler;
@@ -41,12 +41,16 @@ import dev.thenexusgates.hyguard.core.selection.WandItem;
 import dev.thenexusgates.hyguard.event.HyGuardBreakBlockSystem;
 import dev.thenexusgates.hyguard.event.HyGuardChangeGameModeSystem;
 import dev.thenexusgates.hyguard.event.DisconnectCleanupSystem;
+import dev.thenexusgates.hyguard.event.HyGuardDamageBlockSystem;
 import dev.thenexusgates.hyguard.event.HyGuardEntityDamageSystem;
 import dev.thenexusgates.hyguard.event.HyGuardItemSystem;
 import dev.thenexusgates.hyguard.event.HyGuardMobSpawnSystem;
 import dev.thenexusgates.hyguard.event.PlayerMoveSystem;
 import dev.thenexusgates.hyguard.event.HyGuardPlaceBlockSystem;
 import dev.thenexusgates.hyguard.event.HyGuardUseBlockSystem;
+import dev.thenexusgates.hyguard.i18n.HyGuardText;
+import dev.thenexusgates.hyguard.permission.HyGuardPermissions;
+import dev.thenexusgates.hyguard.sound.HyGuardSounds;
 import dev.thenexusgates.hyguard.storage.BackupManager;
 import dev.thenexusgates.hyguard.storage.JsonRegionRepository;
 import dev.thenexusgates.hyguard.storage.PlayerDirectory;
@@ -79,6 +83,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -94,11 +99,22 @@ public final class HyGuardPlugin extends JavaPlugin {
     public record PlayerIdentity(String uuid, String username) {
     }
 
+    private record WandLeftClickState(String worldId, BlockPos position, long timestampMs) {
+    }
+
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Logger STORAGE_LOGGER = Logger.getLogger("HyGuard");
+    private static final String SERVER_REGION_OWNER_UUID = "__server__";
+    private static final String SERVER_REGION_OWNER_NAME = "Server";
+    private static final long WAND_LEFT_CLICK_DEBOUNCE_MS = 1500L;
 
+    private Path dataDirectory;
     private Path configPath;
+    private HyGuardAssetPack assetPack;
     private HyGuardConfig config;
+    private HyGuardText text;
+    private HyGuardPermissions permissions;
+    private HyGuardSounds sounds;
     private RegionRepository regionRepository;
     private RegionCache regionCache;
     private SelectionService selectionService;
@@ -112,6 +128,7 @@ public final class HyGuardPlugin extends JavaPlugin {
     private RegionBorderVisualizer regionBorderVisualizer;
     private PlayerMoveSystem playerMoveSystem;
     private DisconnectCleanupSystem disconnectCleanupSystem;
+    private final ConcurrentHashMap<String, WandLeftClickState> recentWandLeftClicks = new ConcurrentHashMap<>();
 
     public HyGuardPlugin(@Nonnull JavaPluginInit init) {
         super(init);
@@ -119,18 +136,23 @@ public final class HyGuardPlugin extends JavaPlugin {
 
     @Override
     protected void setup() {
-        configPath = getDataDirectory().resolve("config.json");
+        assetPack = HyGuardAssetPack.initialize(STORAGE_LOGGER);
+        dataDirectory = assetPack.getDataRoot();
+        configPath = dataDirectory.resolve("config.json");
         ensureResourceFile("config.json", configPath);
         config = loadConfig();
-        regionRepository = new JsonRegionRepository(getDataDirectory(), STORAGE_LOGGER);
+        text = new HyGuardText(config.chat);
+        permissions = new HyGuardPermissions(config.general);
+        sounds = new HyGuardSounds(config.sounds, STORAGE_LOGGER);
+        regionRepository = new JsonRegionRepository(dataDirectory, STORAGE_LOGGER);
         regionCache = new RegionCache();
         regionCache.loadAll(regionRepository.loadAll());
         selectionService = new SelectionService();
         bypassHandler = new BypassHandler();
         protectionEngine = new ProtectionEngine(regionCache, bypassHandler, config);
-        playerDirectory = new PlayerDirectory(getDataDirectory(), STORAGE_LOGGER);
+        playerDirectory = new PlayerDirectory(dataDirectory, STORAGE_LOGGER);
         playerDirectory.loadAll();
-        backupManager = new BackupManager(getDataDirectory(), STORAGE_LOGGER);
+        backupManager = new BackupManager(dataDirectory, STORAGE_LOGGER);
         backupManager.start(config.general.autoBackupIntervalMinutes, config.general.maxBackups);
         visualScheduler = new VisualScheduler(HytaleServer.SCHEDULED_EXECUTOR);
         enterExitMessageRenderer = new EnterExitMessageRenderer(this);
@@ -144,6 +166,7 @@ public final class HyGuardPlugin extends JavaPlugin {
         getEventRegistry().registerGlobal(com.hypixel.hytale.server.core.event.events.player.PlayerDisconnectEvent.class, disconnectCleanupSystem::handle);
 
         if (EntityModule.get() != null) {
+            getEntityStoreRegistry().registerSystem(new HyGuardDamageBlockSystem(this));
             getEntityStoreRegistry().registerSystem(new HyGuardBreakBlockSystem(this));
             getEntityStoreRegistry().registerSystem(new HyGuardPlaceBlockSystem(this));
             getEntityStoreRegistry().registerSystem(new HyGuardUseBlockSystem(this));
@@ -162,7 +185,12 @@ public final class HyGuardPlugin extends JavaPlugin {
             .filter(worldId -> worldId != null && !worldId.isBlank())
             .distinct()
             .count();
-        getLogger().at(Level.INFO).log("[HyGuard] Enabled. Regions loaded=%s worlds=%s particles=%s", regionCache.allRegions().size(), worldCount, selectionVisualizer.isSupported());
+        getLogger().at(Level.INFO).log("[HyGuard] Enabled. Regions loaded=%s worlds=%s particles=%s dataRoot=%s packRoot=%s",
+                regionCache.allRegions().size(),
+                worldCount,
+                selectionVisualizer.isSupported(),
+                dataDirectory,
+                assetPack.getPackRoot());
     }
 
     @Override
@@ -197,6 +225,7 @@ public final class HyGuardPlugin extends JavaPlugin {
         String playerUuid = playerRef.getUuid().toString();
         selectionService.clear(playerUuid);
         bypassHandler.clear(playerUuid);
+        recentWandLeftClicks.remove(playerUuid);
         if (selectionVisualizer != null) {
             selectionVisualizer.clearPlayer(playerUuid);
         }
@@ -214,19 +243,45 @@ public final class HyGuardPlugin extends JavaPlugin {
     }
 
     public boolean hasAdminPermission(PlayerRef playerRef) {
-        return playerRef != null && PermissionsModule.get().hasPermission(playerRef.getUuid(), config.general.adminPermission);
+        return permissions.hasAdmin(playerRef);
     }
 
     public boolean hasBypassPermission(PlayerRef playerRef) {
-        return playerRef != null && PermissionsModule.get().hasPermission(playerRef.getUuid(), config.general.bypassPermission);
+        return permissions.hasBypass(playerRef);
+    }
+
+    public boolean canBypassProtection(PlayerRef playerRef) {
+        return playerRef != null
+                && playerRef.getUuid() != null
+                && (hasAdminPermission(playerRef) || bypassHandler.isBypassing(playerRef.getUuid().toString()));
+    }
+
+    public boolean hasUsePermission(PlayerRef playerRef) {
+        return permissions.hasUse(playerRef);
+    }
+
+    public boolean hasPermission(PlayerRef playerRef, String permission) {
+        return permissions.has(playerRef, permission);
+    }
+
+    public boolean hasPermissionOrAdmin(PlayerRef playerRef, String permission) {
+        return hasAdminPermission(playerRef) || hasPermission(playerRef, permission);
     }
 
     public boolean toggleBypass(PlayerRef playerRef) {
         return bypassHandler.toggle(playerRef.getUuid().toString());
     }
 
+    public String text(PlayerRef playerRef, String key, Map<String, String> replacements) {
+        return text.text(playerRef, key, replacements);
+    }
+
+    public String message(PlayerRef playerRef, String key, Map<String, String> replacements) {
+        return text(playerRef, key, replacements);
+    }
+
     public String message(String template, Map<String, String> replacements) {
-        return config.messages.prefix + TextFormatter.format(template, replacements);
+        return TextFormatter.format(template, replacements);
     }
 
     public void send(PlayerRef playerRef, String template) {
@@ -235,8 +290,22 @@ public final class HyGuardPlugin extends JavaPlugin {
 
     public void send(PlayerRef playerRef, String template, Map<String, String> replacements) {
         if (playerRef != null) {
-            playerRef.sendMessage(Message.raw(message(template, replacements)));
+            playerRef.sendMessage(text.chat(playerRef, template, replacements, true));
         }
+    }
+
+    public void sendRaw(PlayerRef playerRef, String rawText) {
+        sendRaw(playerRef, rawText, false);
+    }
+
+    public void sendRaw(PlayerRef playerRef, String rawText, boolean includePrefix) {
+        if (playerRef != null) {
+            playerRef.sendMessage(text.rawChat(rawText, includePrefix));
+        }
+    }
+
+    public Message rawMessage(String template, Map<String, String> replacements, boolean includePrefix) {
+        return text.rawChat(TextFormatter.format(template, replacements), includePrefix);
     }
 
     public Region findRegionByName(String worldId, String name) {
@@ -257,25 +326,52 @@ public final class HyGuardPlugin extends JavaPlugin {
         return region.getName() == null || region.getName().isBlank() ? regionId : region.getName();
     }
 
+    public Region findRegionById(String regionId) {
+        return regionCache.findById(regionId);
+    }
+
     public boolean isValidRegionName(String name) {
-        return name != null && name.matches("^[a-zA-Z0-9_-]{3,32}$");
+        if (name == null) {
+            return false;
+        }
+        if (name.length() < config.limits.regionNameMinLength || name.length() > config.limits.regionNameMaxLength) {
+            return false;
+        }
+        return name.matches(config.limits.regionNamePattern);
+    }
+
+    public int countOwnedRegions(String ownerUuid) {
+        if (ownerUuid == null || ownerUuid.isBlank()) {
+            return 0;
+        }
+        return (int) regionCache.allRegions().stream()
+                .filter(region -> ownerUuid.equalsIgnoreCase(region.getOwnerUuid()))
+                .count();
     }
 
     public Region createRegion(PlayerRef playerRef, String worldId, String name) {
+        return createRegion(playerRef, worldId, name, playerRef.getUuid().toString(), playerRef.getUsername());
+    }
+
+    public Region createServerRegion(PlayerRef playerRef, String worldId, String name) {
+        return createRegion(playerRef, worldId, name, SERVER_REGION_OWNER_UUID, SERVER_REGION_OWNER_NAME);
+    }
+
+    private Region createRegion(PlayerRef playerRef, String worldId, String name, String ownerUuid, String ownerName) {
         String playerUuid = playerRef.getUuid().toString();
         var session = selectionService.get(playerUuid);
         if (session == null || !session.isComplete() || !worldId.equalsIgnoreCase(session.getWorldId())) {
             return null;
         }
 
-        if (hasOverlapConflict(worldId, playerUuid, session.getFirstPoint().getPosition(), session.getSecondPoint().getPosition(), null)) {
+        if (hasOverlapConflict(worldId, ownerUuid, session.getFirstPoint().getPosition(), session.getSecondPoint().getPosition(), null)) {
             return null;
         }
 
         Region region = Region.create(
                 name,
-                playerUuid,
-                playerRef.getUsername(),
+                ownerUuid,
+                ownerName,
                 worldId,
                 session.getFirstPoint().getPosition(),
                 session.getSecondPoint().getPosition()
@@ -290,16 +386,9 @@ public final class HyGuardPlugin extends JavaPlugin {
     }
 
     public Region createGlobalRegion(PlayerRef playerRef, String worldId, String name) {
-        BlockPos spawnPoint = null;
-        if (playerRef != null && playerRef.getTransform() != null && playerRef.getTransform().getPosition() != null) {
-            spawnPoint = new BlockPos(
-                    (int) Math.floor(playerRef.getTransform().getPosition().getX()),
-                    (int) Math.floor(playerRef.getTransform().getPosition().getY()),
-                    (int) Math.floor(playerRef.getTransform().getPosition().getZ())
-            );
-        }
+        BlockPos spawnPoint = resolvePlayerBlockPosition(playerRef);
 
-        Region region = Region.createGlobal(name, playerRef.getUuid().toString(), playerRef.getUsername(), worldId, spawnPoint);
+        Region region = Region.createGlobal(name, SERVER_REGION_OWNER_UUID, SERVER_REGION_OWNER_NAME, worldId, spawnPoint);
         region.putFlag(RegionFlag.BLOCK_BREAK, new RegionFlagValue(RegionFlagValue.Mode.valueOf(config.defaults.blockBreak)));
         region.putFlag(RegionFlag.BLOCK_PLACE, new RegionFlagValue(RegionFlagValue.Mode.valueOf(config.defaults.blockPlace)));
         region.putFlag(RegionFlag.BLOCK_INTERACT, new RegionFlagValue(RegionFlagValue.Mode.valueOf(config.defaults.blockInteract)));
@@ -332,6 +421,9 @@ public final class HyGuardPlugin extends JavaPlugin {
 
     public void reloadState() {
         config = loadConfig();
+        text = new HyGuardText(config.chat);
+        permissions = new HyGuardPermissions(config.general);
+        sounds = new HyGuardSounds(config.sounds, STORAGE_LOGGER);
         regionCache.loadAll(regionRepository.loadAll());
         protectionEngine = new ProtectionEngine(regionCache, bypassHandler, config);
         playerDirectory.loadAll();
@@ -380,13 +472,35 @@ public final class HyGuardPlugin extends JavaPlugin {
         boolean firstPoint = selectionService.setNextPoint(playerUuid, worldId, position);
         if (firstPoint) {
             send(playerRef, config.messages.selectionPointOneSet, Map.of("pos", position.toString()));
+            sounds.play(playerRef, HyGuardSounds.Cue.SELECTION_POINT_ONE);
         } else {
             Map<String, String> replacements = new HashMap<>();
             replacements.put("pos", position.toString());
             replacements.put("size", formatSelectionSize(selectionService.get(playerUuid)));
             send(playerRef, config.messages.selectionPointTwoSet, replacements);
+            sounds.play(playerRef, HyGuardSounds.Cue.SELECTION_POINT_TWO);
         }
         refreshSelectionVisualization(playerRef);
+    }
+
+    public void handleWandLeftClick(PlayerRef playerRef, String worldId, BlockPos position) {
+        if (playerRef == null || playerRef.getUuid() == null || worldId == null || position == null) {
+            return;
+        }
+
+        String playerUuid = playerRef.getUuid().toString();
+        long now = System.currentTimeMillis();
+        WandLeftClickState previous = recentWandLeftClicks.get(playerUuid);
+        if (previous != null
+                && previous.worldId() != null
+                && previous.worldId().equalsIgnoreCase(worldId)
+                && previous.position().equals(position)
+                && now - previous.timestampMs() < WAND_LEFT_CLICK_DEBOUNCE_MS) {
+            return;
+        }
+
+        recentWandLeftClicks.put(playerUuid, new WandLeftClickState(worldId, position.copy(), now));
+        cycleSelectionPoint(playerRef, worldId, position);
     }
 
     public void setSelectionPoint(PlayerRef playerRef, String worldId, BlockPos position, boolean firstPoint) {
@@ -398,14 +512,29 @@ public final class HyGuardPlugin extends JavaPlugin {
         if (firstPoint) {
             selectionService.setFirstPoint(playerUuid, worldId, position);
             send(playerRef, config.messages.selectionPointOneSet, Map.of("pos", position.toString()));
+            sounds.play(playerRef, HyGuardSounds.Cue.SELECTION_POINT_ONE);
         } else {
             selectionService.setSecondPoint(playerUuid, worldId, position);
             Map<String, String> replacements = new HashMap<>();
             replacements.put("pos", position.toString());
             replacements.put("size", formatSelectionSize(selectionService.get(playerUuid)));
             send(playerRef, config.messages.selectionPointTwoSet, replacements);
+            sounds.play(playerRef, HyGuardSounds.Cue.SELECTION_POINT_TWO);
         }
         refreshSelectionVisualization(playerRef);
+    }
+
+    public void clearSelection(PlayerRef playerRef) {
+        if (playerRef == null || playerRef.getUuid() == null) {
+            return;
+        }
+
+        String playerUuid = playerRef.getUuid().toString();
+        selectionService.clear(playerUuid);
+        recentWandLeftClicks.remove(playerUuid);
+        if (selectionVisualizer != null) {
+            selectionVisualizer.clearPlayer(playerUuid);
+        }
     }
 
     public void refreshSelectionVisualization(PlayerRef playerRef) {
@@ -554,6 +683,27 @@ public final class HyGuardPlugin extends JavaPlugin {
         return protectionEngine.evaluate(new ProtectionQuery(playerRef.getUuid().toString(), worldId, position, action), admin);
     }
 
+    public boolean isFlagAllowed(PlayerRef playerRef,
+                                 String worldId,
+                                 BlockPos position,
+                                 RegionFlag flag,
+                                 RegionFlagValue.Mode defaultMode) {
+        if (worldId == null || position == null) {
+            return defaultMode == RegionFlagValue.Mode.ALLOW;
+        }
+        return isFlagAllowed(playerRef, getRegionsAt(worldId, position), flag, defaultMode);
+    }
+
+    public boolean isFlagAllowed(PlayerRef playerRef,
+                                 Region region,
+                                 RegionFlag flag,
+                                 RegionFlagValue.Mode defaultMode) {
+        if (region == null) {
+            return defaultMode == RegionFlagValue.Mode.ALLOW;
+        }
+        return isFlagAllowed(playerRef, List.of(region), flag, defaultMode);
+    }
+
     public boolean teleportToRegion(Store<EntityStore> store, Ref<EntityStore> entityRef, PlayerRef playerRef, Region region) {
         if (store == null || entityRef == null || playerRef == null || region == null) {
             return false;
@@ -598,8 +748,27 @@ public final class HyGuardPlugin extends JavaPlugin {
             return;
         }
         backupManager.performBackup("manual",
-                path -> send(requester, config.messages.backupCompleted, Map.of("path", path.toString())),
+                path -> {
+                    send(requester, config.messages.backupCompleted, Map.of("path", path.toString()));
+                    sounds.play(requester, HyGuardSounds.Cue.SUCCESS);
+                },
                 throwable -> send(requester, config.messages.backupFailed));
+    }
+
+    public void playSuccessSound(PlayerRef playerRef) {
+        sounds.play(playerRef, HyGuardSounds.Cue.SUCCESS);
+    }
+
+    public void playDeleteSound(PlayerRef playerRef) {
+        sounds.play(playerRef, HyGuardSounds.Cue.DELETE);
+    }
+
+    public void playMemberAddedSound(PlayerRef playerRef) {
+        sounds.play(playerRef, HyGuardSounds.Cue.MEMBER_ADDED);
+    }
+
+    public void playMemberRemovedSound(PlayerRef playerRef) {
+        sounds.play(playerRef, HyGuardSounds.Cue.MEMBER_REMOVED);
     }
 
     public boolean giveWand(Store<EntityStore> store, Ref<EntityStore> entityRef, PlayerRef playerRef) {
@@ -759,6 +928,34 @@ public final class HyGuardPlugin extends JavaPlugin {
             }
         }
         return false;
+    }
+
+    private BlockPos resolvePlayerBlockPosition(PlayerRef playerRef) {
+        if (playerRef == null || playerRef.getTransform() == null || playerRef.getTransform().getPosition() == null) {
+            return null;
+        }
+        return new BlockPos(
+                (int) Math.floor(playerRef.getTransform().getPosition().getX()),
+                (int) Math.floor(playerRef.getTransform().getPosition().getY()),
+                (int) Math.floor(playerRef.getTransform().getPosition().getZ())
+        );
+    }
+
+    private boolean isFlagAllowed(PlayerRef playerRef,
+                                  List<Region> regions,
+                                  RegionFlag flag,
+                                  RegionFlagValue.Mode defaultMode) {
+        if (playerRef == null || flag == null) {
+            return defaultMode == RegionFlagValue.Mode.ALLOW;
+        }
+        for (Region region : regions) {
+            RegionFlagValue flagValue = region.getFlags().get(flag);
+            if (flagValue == null || flagValue.getMode() == RegionFlagValue.Mode.INHERIT) {
+                continue;
+            }
+            return isFlagGranted(region, playerRef, flagValue);
+        }
+        return defaultMode == RegionFlagValue.Mode.ALLOW;
     }
 
     private Vector3d resolveRegionTeleportPosition(Region region) {

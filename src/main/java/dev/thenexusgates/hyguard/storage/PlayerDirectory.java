@@ -6,6 +6,7 @@ import com.hypixel.hytale.server.core.universe.PlayerRef;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -108,14 +109,27 @@ public final class PlayerDirectory {
     }
 
     private void savePlayer(StoredPlayer storedPlayer) {
+        Path temp = null;
         try {
             Files.createDirectories(playersDirectory);
             Path file = playersDirectory.resolve(storedPlayer.uuid() + ".json");
-            Path temp = file.resolveSibling(file.getFileName() + ".tmp");
+            temp = file.resolveSibling(file.getFileName() + ".tmp");
             Files.writeString(temp, GSON.toJson(storedPlayer), StandardCharsets.UTF_8);
-            Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            try {
+                Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException atomicMoveNotSupportedException) {
+                logger.log(Level.WARNING, "[HyGuard] Atomic player directory save unavailable for " + storedPlayer.username() + ". Falling back to replace move.", atomicMoveNotSupportedException);
+                Files.move(temp, file, StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (IOException ioException) {
             logger.log(Level.WARNING, "[HyGuard] Failed to save player directory entry for " + storedPlayer.username(), ioException);
+            if (temp != null) {
+                try {
+                    Files.deleteIfExists(temp);
+                } catch (IOException cleanupException) {
+                    logger.log(Level.WARNING, "[HyGuard] Failed to clean temp player directory file " + temp, cleanupException);
+                }
+            }
         }
     }
 

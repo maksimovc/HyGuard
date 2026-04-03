@@ -17,6 +17,8 @@ import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import dev.thenexusgates.hyguard.HyGuardPlugin;
 import dev.thenexusgates.hyguard.core.protection.ProtectionAction;
+import dev.thenexusgates.hyguard.core.region.RegionFlag;
+import dev.thenexusgates.hyguard.core.region.RegionFlagValue;
 import dev.thenexusgates.hyguard.util.BlockPos;
 
 import javax.annotation.Nullable;
@@ -66,6 +68,11 @@ public final class HyGuardEntityDamageSystem extends DamageEventSystem {
                 (int) Math.floor(victimTransform.getPosition().getY()),
                 (int) Math.floor(victimTransform.getPosition().getZ())
         );
+
+        if (plugin.isFlagAllowed(victimPlayerRef, world.getName(), position, RegionFlag.INVINCIBLE, RegionFlagValue.Mode.DENY)) {
+            damage.setCancelled(true);
+            return;
+        }
 
         if (damage.getCause() == DamageCause.FALL
                 && !plugin.evaluate(victimPlayerRef, world.getName(), position, ProtectionAction.PLAYER_FALL_DAMAGE).allowed()) {

@@ -1,9 +1,14 @@
 package dev.thenexusgates.hyguard.visual;
 
 import com.hypixel.hytale.protocol.packets.interface_.EditorBlocksChange;
+import com.hypixel.hytale.protocol.GameMode;
 import com.hypixel.hytale.server.core.io.PacketHandler;
+import com.hypixel.hytale.server.core.entity.entities.Player;
 import com.hypixel.hytale.server.core.prefab.selection.standard.BlockSelection;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
+import com.hypixel.hytale.component.Ref;
+import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import dev.thenexusgates.hyguard.core.selection.SelectionSession;
 import dev.thenexusgates.hyguard.util.BlockPos;
 import dev.thenexusgates.hyguard.util.BlockPosUtils;
@@ -21,6 +26,7 @@ public final class SelectionVisualizer {
     private final VisualScheduler visualScheduler;
     private final ConcurrentHashMap<String, RenderHandle> activeRenders = new ConcurrentHashMap<>();
     private volatile boolean nativeOverlaySupported = true;
+    private volatile ScheduledFuture<?> refreshTask;
 
     public SelectionVisualizer(ParticleAdapter particleAdapter, VisualScheduler visualScheduler) {
         this.particleAdapter = particleAdapter;
@@ -54,15 +60,9 @@ public final class SelectionVisualizer {
             return;
         }
 
-        removePlayer(playerUuid, false);
+        activeRenders.put(playerUuid, new RenderHandle(viewer, nextState));
         drawSelection(viewer, nextState);
-        ScheduledFuture<?> task = visualScheduler.scheduleAtFixedRate(
-                () -> drawSelection(viewer, nextState),
-                REFRESH_INTERVAL_MS,
-                REFRESH_INTERVAL_MS,
-                TimeUnit.MILLISECONDS
-        );
-        activeRenders.put(playerUuid, new RenderHandle(viewer, nextState, task));
+        ensureRefreshTask();
     }
 
     public void clearPlayer(String playerUuid) {
@@ -75,10 +75,38 @@ public final class SelectionVisualizer {
         }
         RenderHandle removed = activeRenders.remove(playerUuid);
         if (removed != null) {
-            visualScheduler.cancel(removed.task());
             if (clearOverlay) {
                 clearSelection(removed.viewer());
             }
+        }
+        stopRefreshTaskIfIdle();
+    }
+
+    private synchronized void ensureRefreshTask() {
+        if (refreshTask != null && !refreshTask.isCancelled()) {
+            return;
+        }
+        refreshTask = visualScheduler.scheduleAtFixedRate(
+                this::redrawAll,
+                REFRESH_INTERVAL_MS,
+                REFRESH_INTERVAL_MS,
+                TimeUnit.MILLISECONDS
+        );
+    }
+
+    private synchronized void stopRefreshTaskIfIdle() {
+        if (!activeRenders.isEmpty()) {
+            return;
+        }
+        if (refreshTask != null) {
+            visualScheduler.cancel(refreshTask);
+            refreshTask = null;
+        }
+    }
+
+    private void redrawAll() {
+        for (RenderHandle renderHandle : activeRenders.values()) {
+            drawSelection(renderHandle.viewer(), renderHandle.state());
         }
     }
 
@@ -87,7 +115,11 @@ public final class SelectionVisualizer {
             return;
         }
 
-        boolean drewNativeOverlay = sendSelection(viewer, state);
+        boolean shouldUseNativeOverlay = shouldUseNativeOverlay(viewer);
+        boolean drewNativeOverlay = shouldUseNativeOverlay && sendSelection(viewer, state);
+        if (!shouldUseNativeOverlay) {
+            clearSelection(viewer);
+        }
         if (state.hasConflict() && particleAdapter.supportsParticles()) {
             particleAdapter.drawCuboid(viewer, state.min(), state.max(), ParticleAdapter.ParticleStyle.SELECTION_CONFLICT);
             return;
@@ -141,11 +173,30 @@ public final class SelectionVisualizer {
         return selection.toSelectionPacket();
     }
 
+    private boolean shouldUseNativeOverlay(PlayerRef viewer) {
+        if (viewer == null) {
+            return false;
+        }
+
+        Ref<EntityStore> viewerRef = viewer.getReference();
+        if (viewerRef == null || !viewerRef.isValid()) {
+            return false;
+        }
+
+        Store<EntityStore> store = viewerRef.getStore();
+        if (store == null) {
+            return false;
+        }
+
+        Player player = store.getComponent(viewerRef, Player.getComponentType());
+        return player != null && player.getGameMode() == GameMode.Creative;
+    }
+
     public VisualScheduler getVisualScheduler() {
         return visualScheduler;
     }
 
-    private record RenderHandle(PlayerRef viewer, RenderState state, ScheduledFuture<?> task) {
+    private record RenderHandle(PlayerRef viewer, RenderState state) {
     }
 
     private static final class RenderState {

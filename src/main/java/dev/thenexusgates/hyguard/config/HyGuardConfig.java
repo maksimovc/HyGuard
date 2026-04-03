@@ -2,11 +2,17 @@ package dev.thenexusgates.hyguard.config;
 
 import dev.thenexusgates.hyguard.core.region.RegionFlagValue;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public final class HyGuardConfig {
 
-    public int schemaVersion = 1;
+    public int schemaVersion = 2;
     public General general = new General();
-    public Messages messages = new Messages();
+    public transient Messages messages = new Messages();
+    public Chat chat = new Chat();
+    public Limits limits = new Limits();
+    public Sounds sounds = new Sounds();
     public Defaults defaults = new Defaults();
 
     public HyGuardConfig normalize() {
@@ -20,6 +26,21 @@ public final class HyGuardConfig {
         }
         messages.normalize();
 
+        if (chat == null) {
+            chat = new Chat();
+        }
+        chat.normalize();
+
+        if (limits == null) {
+            limits = new Limits();
+        }
+        limits.normalize();
+
+        if (sounds == null) {
+            sounds = new Sounds();
+        }
+        sounds.normalize();
+
         if (defaults == null) {
             defaults = new Defaults();
         }
@@ -29,8 +50,29 @@ public final class HyGuardConfig {
 
     public static final class General {
         public String wandItemId = "HyGuard_Wand";
+        public String usePermission = "hyguard.use";
         public String adminPermission = "hyguard.admin";
         public String bypassPermission = "hyguard.bypass";
+        public String wandPermission = "hyguard.use";
+        public String infoPermission = "hyguard.use";
+        public String listPermission = "hyguard.use";
+        public String selectPermission = "hyguard.use";
+        public String createPermission = "hyguard.use";
+        public String redefinePermission = "hyguard.use";
+        public String deletePermission = "hyguard.use";
+        public String selectionEditPermission = "hyguard.use";
+        public String priorityPermission = "hyguard.use";
+        public String flagsViewPermission = "hyguard.use";
+        public String flagEditPermission = "hyguard.use";
+        public String memberPermission = "hyguard.use";
+        public String teleportPermission = "hyguard.use";
+        public String setSpawnPermission = "hyguard.use";
+        public String guiPermission = "hyguard.use";
+        public String backupPermission = "hyguard.admin";
+        public String debugPermission = "hyguard.admin";
+        public String savePermission = "hyguard.admin";
+        public String reloadPermission = "hyguard.admin";
+        public String bypassTogglePermission = "hyguard.bypass";
         public long autoBackupIntervalMinutes = 30L;
         public int maxBackups = 12;
 
@@ -38,11 +80,74 @@ public final class HyGuardConfig {
             if (wandItemId == null || wandItemId.isBlank()) {
                 wandItemId = "HyGuard_Wand";
             }
+            if (usePermission == null || usePermission.isBlank()) {
+                usePermission = "hyguard.use";
+            }
             if (adminPermission == null || adminPermission.isBlank()) {
                 adminPermission = "hyguard.admin";
             }
             if (bypassPermission == null || bypassPermission.isBlank()) {
                 bypassPermission = "hyguard.bypass";
+            }
+            if (wandPermission == null || wandPermission.isBlank()) {
+                wandPermission = usePermission;
+            }
+            if (infoPermission == null || infoPermission.isBlank()) {
+                infoPermission = usePermission;
+            }
+            if (listPermission == null || listPermission.isBlank()) {
+                listPermission = usePermission;
+            }
+            if (selectPermission == null || selectPermission.isBlank()) {
+                selectPermission = usePermission;
+            }
+            if (createPermission == null || createPermission.isBlank()) {
+                createPermission = usePermission;
+            }
+            if (redefinePermission == null || redefinePermission.isBlank()) {
+                redefinePermission = usePermission;
+            }
+            if (deletePermission == null || deletePermission.isBlank()) {
+                deletePermission = usePermission;
+            }
+            if (selectionEditPermission == null || selectionEditPermission.isBlank()) {
+                selectionEditPermission = usePermission;
+            }
+            if (priorityPermission == null || priorityPermission.isBlank()) {
+                priorityPermission = usePermission;
+            }
+            if (flagsViewPermission == null || flagsViewPermission.isBlank()) {
+                flagsViewPermission = usePermission;
+            }
+            if (flagEditPermission == null || flagEditPermission.isBlank()) {
+                flagEditPermission = usePermission;
+            }
+            if (memberPermission == null || memberPermission.isBlank()) {
+                memberPermission = usePermission;
+            }
+            if (teleportPermission == null || teleportPermission.isBlank()) {
+                teleportPermission = usePermission;
+            }
+            if (setSpawnPermission == null || setSpawnPermission.isBlank()) {
+                setSpawnPermission = usePermission;
+            }
+            if (guiPermission == null || guiPermission.isBlank()) {
+                guiPermission = usePermission;
+            }
+            if (backupPermission == null || backupPermission.isBlank()) {
+                backupPermission = adminPermission;
+            }
+            if (debugPermission == null || debugPermission.isBlank()) {
+                debugPermission = adminPermission;
+            }
+            if (savePermission == null || savePermission.isBlank()) {
+                savePermission = adminPermission;
+            }
+            if (reloadPermission == null || reloadPermission.isBlank()) {
+                reloadPermission = adminPermission;
+            }
+            if (bypassTogglePermission == null || bypassTogglePermission.isBlank()) {
+                bypassTogglePermission = bypassPermission;
             }
             if (autoBackupIntervalMinutes < 0L) {
                 autoBackupIntervalMinutes = 0L;
@@ -53,284 +158,366 @@ public final class HyGuardConfig {
         }
     }
 
-    public static final class Messages {
-        public String prefix = "[HyGuard] ";
-        public String noPermission = "You do not have permission for that action.";
-        public String wandGiven = "Wand added to your inventory.";
-        public String selectionPointOneSet = "Selection point 1 set at {pos}.";
-        public String selectionPointTwoSet = "Selection point 2 set at {pos}. Size: {size}.";
-        public String selectionIncomplete = "Set both selection points first.";
-        public String selectionLoaded = "Selection loaded from region {name}.";
-        public String globalSelectionUnsupported = "Global regions do not use two-point bounds.";
-        public String selectionUpdated = "Selection updated: min={min}, max={max}, size={size}.";
-        public String selectionWorldMismatch = "Your selection must be in the same world as the region.";
-        public String invalidSelectionEdit = "Usage: /hg expand|contract|shift <north|south|east|west|up|down> <amount>.";
-        public String invalidSelectionAmount = "Selection amount must be an integer from 1 to 500 that keeps the selection valid.";
-        public String regionCreated = "Region {name} created.";
-        public String regionRedefined = "Region {name} redefined from your current selection.";
-        public String regionDeleted = "Region {name} deleted.";
-        public String regionDeleteConfirmRequired = "Run /hg delete {name} --confirm to delete this region.";
-        public String regionNotFound = "Region not found.";
-        public String regionAlreadyExists = "A region with that name already exists.";
-        public String regionOverlapConflict = "That selection overlaps a region owned by another player.";
-        public String regionListEmpty = "No regions found in this world.";
-        public String regionList = "Regions in {world}: {regions}";
-        public String protectionDenied = "This area is protected.";
-        public String invalidRegionName = "Region names must be 3-32 characters and use only letters, numbers, underscores, or dashes.";
-        public String invalidPriority = "Priority must be an integer from 0 to 100.";
-        public String invalidFlag = "Unknown region flag.";
-        public String invalidFlagValue = "Unknown flag value. Use ALLOW, DENY, INHERIT, ALLOW_MEMBERS, ALLOW_TRUSTED, or clear.";
-        public String priorityUpdated = "Region {name} priority set to {priority}.";
-        public String flagUpdated = "Region {name} flag {flag} set to {value}.";
-        public String flagCleared = "Region {name} flag {flag} cleared.";
-        public String flagsHeader = "Flags for {name} page {page}/{pages}:";
-        public String flagListEntry = "{flag} = {value}";
-        public String invalidPage = "Page must be a positive integer.";
-        public String playerLookupFailed = "Player not found online or in saved player data.";
-        public String invalidRole = "Unknown role. Use CO_OWNER, MANAGER, MEMBER, TRUSTED, or VISITOR.";
-        public String cannotAssignOwner = "OWNER cannot be assigned with member commands.";
-        public String cannotRemoveOwner = "The region owner cannot be removed.";
-        public String memberAdded = "Added {player} to region {name} as {role}.";
-        public String memberRemoved = "Removed {player} from region {name}.";
-        public String memberRoleUpdated = "Updated {player} in region {name} to {role}.";
-        public String memberNotFound = "That player is not a member of region {name}.";
-        public String memberReplaceConfirm = "{player} is already a member with role {role}. Repeat the command with --confirm to replace it.";
-        public String memberListEmpty = "Region {name} has no members.";
-        public String memberListHeader = "Members of {name} page {page}/{pages}:";
-        public String memberListEntry = "[{role}] {player}";
-        public String tpDenied = "You do not have permission to teleport to that region.";
-        public String teleportFailed = "Teleport failed.";
-        public String regionTeleported = "Teleported to region {name}.";
-        public String regionSpawnSet = "Spawn point for {name} set to {pos}.";
-        public String backupStarted = "Backup started.";
-        public String backupCompleted = "Backup completed: {path}";
-        public String backupFailed = "Backup failed. Check server logs.";
-        public String invalidDebugCommand = "Usage: /hg debug pos";
-        public String debugPosNone = "No regions contain your current position.";
-        public String debugPosHeader = "Regions at your position:";
-        public String debugPosEntry = "{name} priority={priority} owner={owner} flags={flags}";
-        public String saveCompleted = "Pending region saves flushed to disk.";
-        public String reloadCompleted = "Configuration and regions reloaded from disk.";
-        public String bypassEnabled = "Bypass enabled.";
-        public String bypassDisabled = "Bypass disabled.";
-        public String helpPageHeader = "Help page {page}/{pages}:";
-        public String helpEntry = "{usage} - {description}";
-        public String helpDetailHeader = "Help for /hg {command}:";
-        public String helpDetailUsage = "Usage: {usage}";
-        public String helpDetailDescription = "Description: {description}";
-        public String helpDetailExample = "Example: {example}";
-        public String helpDetailPermission = "Permission: {permission}";
-        public String helpUnknownTopic = "Unknown help topic.";
-        public String help = "Commands: /hg wand, /hg create <name>, /hg delete <name> --confirm, /hg info [name], /hg list, /hg select <name>, /hg redefine <name>, /hg expand <dir> <amount>, /hg contract <dir> <amount>, /hg shift <dir> <amount>, /hg priority <name> <value>, /hg flag <name> <flag> <value|clear> [text], /hg flags <name>, /hg member <subcommand>, /hg tp <name>, /hg setspawn <name>, /hg backup, /hg debug pos, /hg bypass, /hg save, /hg reload, /hg help [topic]";
-        public String regionInfo = "Region {name}: owner={owner}, world={world}, min={min}, max={max}";
+    public static final class Chat {
+        public String prefix = "\u00a76[\u00a7eHyGuard\u00a76] \u00a7r";
 
         private void normalize() {
             if (prefix == null) {
-                prefix = "[HyGuard] ";
+                prefix = "\u00a76[\u00a7eHyGuard\u00a76] \u00a7r";
             }
+        }
+    }
+
+    public static final class Limits {
+        public int regionNameMinLength = 3;
+        public int regionNameMaxLength = 32;
+        public String regionNamePattern = "^[a-zA-Z0-9_-]+$";
+        public int maxPriority = 100;
+        public int maxSelectionEditAmount = 500;
+        public int maxRegionsPerPlayer = 64;
+        public int maxMembersPerRegion = 64;
+
+        private void normalize() {
+            if (regionNameMinLength < 1) {
+                regionNameMinLength = 1;
+            }
+            if (regionNameMaxLength < regionNameMinLength) {
+                regionNameMaxLength = regionNameMinLength;
+            }
+            if (regionNamePattern == null || regionNamePattern.isBlank()) {
+                regionNamePattern = "^[a-zA-Z0-9_-]+$";
+            }
+            if (maxPriority < 0) {
+                maxPriority = 0;
+            }
+            if (maxSelectionEditAmount < 1) {
+                maxSelectionEditAmount = 1;
+            }
+            if (maxRegionsPerPlayer < 1) {
+                maxRegionsPerPlayer = 1;
+            }
+            if (maxMembersPerRegion < 1) {
+                maxMembersPerRegion = 1;
+            }
+        }
+    }
+
+    public static final class Sounds {
+        public boolean enabled = true;
+        public List<String> selectionPointOne = new ArrayList<>(List.of("SFX_Attn_Quiet", "SFX_Chest_Wooden_Open"));
+        public List<String> selectionPointTwo = new ArrayList<>(List.of("SFX_Attn_Moderate", "SFX_Capture_Crate_Capture_Succeed"));
+        public List<String> success = new ArrayList<>(List.of("SFX_Capture_Crate_Capture_Succeed", "SFX_Attn_Moderate"));
+        public List<String> delete = new ArrayList<>(List.of("SFX_Cactus_Large_Hit", "SFX_Attn_Quiet"));
+        public List<String> memberAdded = new ArrayList<>(List.of("SFX_Attn_Moderate", "SFX_Capture_Crate_Capture_Succeed"));
+        public List<String> memberRemoved = new ArrayList<>(List.of("SFX_Cactus_Large_Hit", "SFX_Attn_Quiet"));
+
+        private void normalize() {
+            selectionPointOne = normalizeList(selectionPointOne, List.of("SFX_Attn_Quiet", "SFX_Chest_Wooden_Open"));
+            selectionPointTwo = normalizeList(selectionPointTwo, List.of("SFX_Attn_Moderate", "SFX_Capture_Crate_Capture_Succeed"));
+            success = normalizeList(success, List.of("SFX_Capture_Crate_Capture_Succeed", "SFX_Attn_Moderate"));
+            delete = normalizeList(delete, List.of("SFX_Cactus_Large_Hit", "SFX_Attn_Quiet"));
+            memberAdded = normalizeList(memberAdded, List.of("SFX_Attn_Moderate", "SFX_Capture_Crate_Capture_Succeed"));
+            memberRemoved = normalizeList(memberRemoved, List.of("SFX_Cactus_Large_Hit", "SFX_Attn_Quiet"));
+        }
+
+        private static List<String> normalizeList(List<String> value, List<String> defaults) {
+            List<String> resolved = new ArrayList<>();
+            if (value != null) {
+                for (String entry : value) {
+                    if (entry != null && !entry.isBlank()) {
+                        resolved.add(entry);
+                    }
+                }
+            }
+            if (resolved.isEmpty()) {
+                resolved.addAll(defaults);
+            }
+            return resolved;
+        }
+    }
+
+    public static final class Messages {
+        public String noPermission = "hyguard.message.no_permission";
+        public String wandGiven = "hyguard.message.wand_given";
+        public String selectionPointOneSet = "hyguard.message.selection_point_one_set";
+        public String selectionPointTwoSet = "hyguard.message.selection_point_two_set";
+        public String selectionIncomplete = "hyguard.message.selection_incomplete";
+        public String selectionLoaded = "hyguard.message.selection_loaded";
+        public String globalSelectionUnsupported = "hyguard.message.global_selection_unsupported";
+        public String selectionUpdated = "hyguard.message.selection_updated";
+        public String selectionWorldMismatch = "hyguard.message.selection_world_mismatch";
+        public String invalidSelectionEdit = "hyguard.message.invalid_selection_edit";
+        public String invalidSelectionAmount = "hyguard.message.invalid_selection_amount";
+        public String regionCreated = "hyguard.message.region_created";
+        public String regionRedefined = "hyguard.message.region_redefined";
+        public String regionDeleted = "hyguard.message.region_deleted";
+        public String regionDeleteConfirmRequired = "hyguard.message.region_delete_confirm_required";
+        public String regionNotFound = "hyguard.message.region_not_found";
+        public String regionAlreadyExists = "hyguard.message.region_already_exists";
+        public String regionOverlapConflict = "hyguard.message.region_overlap_conflict";
+        public String regionLimitReached = "hyguard.message.region_limit_reached";
+        public String regionListEmpty = "hyguard.message.region_list_empty";
+        public String regionList = "hyguard.message.region_list";
+        public String protectionDenied = "hyguard.message.protection_denied";
+        public String invalidRegionName = "hyguard.message.invalid_region_name";
+        public String invalidPriority = "hyguard.message.invalid_priority";
+        public String invalidFlag = "hyguard.message.invalid_flag";
+        public String invalidFlagValue = "hyguard.message.invalid_flag_value";
+        public String priorityUpdated = "hyguard.message.priority_updated";
+        public String flagUpdated = "hyguard.message.flag_updated";
+        public String flagCleared = "hyguard.message.flag_cleared";
+        public String flagsHeader = "hyguard.message.flags_header";
+        public String flagListEntry = "hyguard.message.flag_list_entry";
+        public String invalidPage = "hyguard.message.invalid_page";
+        public String playerLookupFailed = "hyguard.message.player_lookup_failed";
+        public String invalidRole = "hyguard.message.invalid_role";
+        public String cannotAssignOwner = "hyguard.message.cannot_assign_owner";
+        public String cannotRemoveOwner = "hyguard.message.cannot_remove_owner";
+        public String memberAdded = "hyguard.message.member_added";
+        public String memberRemoved = "hyguard.message.member_removed";
+        public String memberRoleUpdated = "hyguard.message.member_role_updated";
+        public String memberNotFound = "hyguard.message.member_not_found";
+        public String memberReplaceConfirm = "hyguard.message.member_replace_confirm";
+        public String memberLimitReached = "hyguard.message.member_limit_reached";
+        public String memberListEmpty = "hyguard.message.member_list_empty";
+        public String memberListHeader = "hyguard.message.member_list_header";
+        public String memberListEntry = "hyguard.message.member_list_entry";
+        public String tpDenied = "hyguard.message.tp_denied";
+        public String teleportFailed = "hyguard.message.teleport_failed";
+        public String regionTeleported = "hyguard.message.region_teleported";
+        public String regionSpawnSet = "hyguard.message.region_spawn_set";
+        public String backupStarted = "hyguard.message.backup_started";
+        public String backupCompleted = "hyguard.message.backup_completed";
+        public String backupFailed = "hyguard.message.backup_failed";
+        public String invalidDebugCommand = "hyguard.message.invalid_debug_command";
+        public String debugPosNone = "hyguard.message.debug_pos_none";
+        public String debugPosHeader = "hyguard.message.debug_pos_header";
+        public String debugPosEntry = "hyguard.message.debug_pos_entry";
+        public String saveCompleted = "hyguard.message.save_completed";
+        public String reloadCompleted = "hyguard.message.reload_completed";
+        public String bypassEnabled = "hyguard.message.bypass_enabled";
+        public String bypassDisabled = "hyguard.message.bypass_disabled";
+        public String helpPageHeader = "hyguard.message.help_page_header";
+        public String helpEntry = "hyguard.message.help_entry";
+        public String helpDetailHeader = "hyguard.message.help_detail_header";
+        public String helpDetailUsage = "hyguard.message.help_detail_usage";
+        public String helpDetailDescription = "hyguard.message.help_detail_description";
+        public String helpDetailExample = "hyguard.message.help_detail_example";
+        public String helpDetailPermission = "hyguard.message.help_detail_permission";
+        public String helpUnknownTopic = "hyguard.message.help_unknown_topic";
+        public String help = "hyguard.message.help";
+        public String regionInfo = "hyguard.message.region_info";
+
+        private void normalize() {
             if (noPermission == null) {
-                noPermission = "You do not have permission for that action.";
+                noPermission = "hyguard.message.no_permission";
             }
             if (wandGiven == null) {
-                wandGiven = "Wand added to your inventory.";
+                wandGiven = "hyguard.message.wand_given";
             }
             if (selectionPointOneSet == null) {
-                selectionPointOneSet = "Selection point 1 set at {pos}.";
+                selectionPointOneSet = "hyguard.message.selection_point_one_set";
             }
             if (selectionPointTwoSet == null) {
-                selectionPointTwoSet = "Selection point 2 set at {pos}. Size: {size}.";
+                selectionPointTwoSet = "hyguard.message.selection_point_two_set";
             }
             if (selectionIncomplete == null) {
-                selectionIncomplete = "Set both selection points first.";
+                selectionIncomplete = "hyguard.message.selection_incomplete";
             }
             if (selectionLoaded == null) {
-                selectionLoaded = "Selection loaded from region {name}.";
+                selectionLoaded = "hyguard.message.selection_loaded";
             }
             if (globalSelectionUnsupported == null) {
-                globalSelectionUnsupported = "Global regions do not use two-point bounds.";
+                globalSelectionUnsupported = "hyguard.message.global_selection_unsupported";
             }
             if (selectionUpdated == null) {
-                selectionUpdated = "Selection updated: min={min}, max={max}, size={size}.";
+                selectionUpdated = "hyguard.message.selection_updated";
             }
             if (selectionWorldMismatch == null) {
-                selectionWorldMismatch = "Your selection must be in the same world as the region.";
+                selectionWorldMismatch = "hyguard.message.selection_world_mismatch";
             }
             if (invalidSelectionEdit == null) {
-                invalidSelectionEdit = "Usage: /hg expand|contract|shift <north|south|east|west|up|down> <amount>.";
+                invalidSelectionEdit = "hyguard.message.invalid_selection_edit";
             }
             if (invalidSelectionAmount == null) {
-                invalidSelectionAmount = "Selection amount must be an integer from 1 to 500 that keeps the selection valid.";
+                invalidSelectionAmount = "hyguard.message.invalid_selection_amount";
             }
             if (regionCreated == null) {
-                regionCreated = "Region {name} created.";
+                regionCreated = "hyguard.message.region_created";
             }
             if (regionRedefined == null) {
-                regionRedefined = "Region {name} redefined from your current selection.";
+                regionRedefined = "hyguard.message.region_redefined";
             }
             if (regionDeleted == null) {
-                regionDeleted = "Region {name} deleted.";
+                regionDeleted = "hyguard.message.region_deleted";
             }
             if (regionDeleteConfirmRequired == null) {
-                regionDeleteConfirmRequired = "Run /hg delete {name} --confirm to delete this region.";
+                regionDeleteConfirmRequired = "hyguard.message.region_delete_confirm_required";
             }
             if (regionNotFound == null) {
-                regionNotFound = "Region not found.";
+                regionNotFound = "hyguard.message.region_not_found";
             }
             if (regionAlreadyExists == null) {
-                regionAlreadyExists = "A region with that name already exists.";
+                regionAlreadyExists = "hyguard.message.region_already_exists";
             }
             if (regionOverlapConflict == null) {
-                regionOverlapConflict = "That selection overlaps a region owned by another player.";
+                regionOverlapConflict = "hyguard.message.region_overlap_conflict";
+            }
+            if (regionLimitReached == null) {
+                regionLimitReached = "hyguard.message.region_limit_reached";
             }
             if (regionListEmpty == null) {
-                regionListEmpty = "No regions found in this world.";
+                regionListEmpty = "hyguard.message.region_list_empty";
             }
             if (regionList == null) {
-                regionList = "Regions in {world}: {regions}";
+                regionList = "hyguard.message.region_list";
             }
             if (protectionDenied == null) {
-                protectionDenied = "This area is protected.";
+                protectionDenied = "hyguard.message.protection_denied";
             }
             if (invalidRegionName == null) {
-                invalidRegionName = "Region names must be 3-32 characters and use only letters, numbers, underscores, or dashes.";
+                invalidRegionName = "hyguard.message.invalid_region_name";
             }
             if (invalidPriority == null) {
-                invalidPriority = "Priority must be an integer from 0 to 100.";
+                invalidPriority = "hyguard.message.invalid_priority";
             }
             if (invalidFlag == null) {
-                invalidFlag = "Unknown region flag.";
+                invalidFlag = "hyguard.message.invalid_flag";
             }
             if (invalidFlagValue == null) {
-                invalidFlagValue = "Unknown flag value. Use ALLOW, DENY, INHERIT, ALLOW_MEMBERS, ALLOW_TRUSTED, or clear.";
+                invalidFlagValue = "hyguard.message.invalid_flag_value";
             }
             if (priorityUpdated == null) {
-                priorityUpdated = "Region {name} priority set to {priority}.";
+                priorityUpdated = "hyguard.message.priority_updated";
             }
             if (flagUpdated == null) {
-                flagUpdated = "Region {name} flag {flag} set to {value}.";
+                flagUpdated = "hyguard.message.flag_updated";
             }
             if (flagCleared == null) {
-                flagCleared = "Region {name} flag {flag} cleared.";
+                flagCleared = "hyguard.message.flag_cleared";
             }
             if (flagsHeader == null) {
-                flagsHeader = "Flags for {name} page {page}/{pages}:";
+                flagsHeader = "hyguard.message.flags_header";
             }
             if (flagListEntry == null) {
-                flagListEntry = "{flag} = {value}";
+                flagListEntry = "hyguard.message.flag_list_entry";
             }
             if (invalidPage == null) {
-                invalidPage = "Page must be a positive integer.";
+                invalidPage = "hyguard.message.invalid_page";
             }
             if (playerLookupFailed == null) {
-                playerLookupFailed = "Player not found online or in saved player data.";
+                playerLookupFailed = "hyguard.message.player_lookup_failed";
             }
             if (invalidRole == null) {
-                invalidRole = "Unknown role. Use CO_OWNER, MANAGER, MEMBER, TRUSTED, or VISITOR.";
+                invalidRole = "hyguard.message.invalid_role";
             }
             if (cannotAssignOwner == null) {
-                cannotAssignOwner = "OWNER cannot be assigned with member commands.";
+                cannotAssignOwner = "hyguard.message.cannot_assign_owner";
             }
             if (cannotRemoveOwner == null) {
-                cannotRemoveOwner = "The region owner cannot be removed.";
+                cannotRemoveOwner = "hyguard.message.cannot_remove_owner";
             }
             if (memberAdded == null) {
-                memberAdded = "Added {player} to region {name} as {role}.";
+                memberAdded = "hyguard.message.member_added";
             }
             if (memberRemoved == null) {
-                memberRemoved = "Removed {player} from region {name}.";
+                memberRemoved = "hyguard.message.member_removed";
             }
             if (memberRoleUpdated == null) {
-                memberRoleUpdated = "Updated {player} in region {name} to {role}.";
+                memberRoleUpdated = "hyguard.message.member_role_updated";
             }
             if (memberNotFound == null) {
-                memberNotFound = "That player is not a member of region {name}.";
+                memberNotFound = "hyguard.message.member_not_found";
             }
             if (memberReplaceConfirm == null) {
-                memberReplaceConfirm = "{player} is already a member with role {role}. Repeat the command with --confirm to replace it.";
+                memberReplaceConfirm = "hyguard.message.member_replace_confirm";
+            }
+            if (memberLimitReached == null) {
+                memberLimitReached = "hyguard.message.member_limit_reached";
             }
             if (memberListEmpty == null) {
-                memberListEmpty = "Region {name} has no members.";
+                memberListEmpty = "hyguard.message.member_list_empty";
             }
             if (memberListHeader == null) {
-                memberListHeader = "Members of {name} page {page}/{pages}:";
+                memberListHeader = "hyguard.message.member_list_header";
             }
             if (memberListEntry == null) {
-                memberListEntry = "[{role}] {player}";
+                memberListEntry = "hyguard.message.member_list_entry";
             }
             if (tpDenied == null) {
-                tpDenied = "You do not have permission to teleport to that region.";
+                tpDenied = "hyguard.message.tp_denied";
             }
             if (teleportFailed == null) {
-                teleportFailed = "Teleport failed.";
+                teleportFailed = "hyguard.message.teleport_failed";
             }
             if (regionTeleported == null) {
-                regionTeleported = "Teleported to region {name}.";
+                regionTeleported = "hyguard.message.region_teleported";
             }
             if (regionSpawnSet == null) {
-                regionSpawnSet = "Spawn point for {name} set to {pos}.";
+                regionSpawnSet = "hyguard.message.region_spawn_set";
             }
             if (backupStarted == null) {
-                backupStarted = "Backup started.";
+                backupStarted = "hyguard.message.backup_started";
             }
             if (backupCompleted == null) {
-                backupCompleted = "Backup completed: {path}";
+                backupCompleted = "hyguard.message.backup_completed";
             }
             if (backupFailed == null) {
-                backupFailed = "Backup failed. Check server logs.";
+                backupFailed = "hyguard.message.backup_failed";
             }
             if (invalidDebugCommand == null) {
-                invalidDebugCommand = "Usage: /hg debug pos";
+                invalidDebugCommand = "hyguard.message.invalid_debug_command";
             }
             if (debugPosNone == null) {
-                debugPosNone = "No regions contain your current position.";
+                debugPosNone = "hyguard.message.debug_pos_none";
             }
             if (debugPosHeader == null) {
-                debugPosHeader = "Regions at your position:";
+                debugPosHeader = "hyguard.message.debug_pos_header";
             }
             if (debugPosEntry == null) {
-                debugPosEntry = "{name} priority={priority} owner={owner} flags={flags}";
+                debugPosEntry = "hyguard.message.debug_pos_entry";
             }
             if (saveCompleted == null) {
-                saveCompleted = "Pending region saves flushed to disk.";
+                saveCompleted = "hyguard.message.save_completed";
             }
             if (reloadCompleted == null) {
-                reloadCompleted = "Configuration and regions reloaded from disk.";
+                reloadCompleted = "hyguard.message.reload_completed";
             }
             if (bypassEnabled == null) {
-                bypassEnabled = "Bypass enabled.";
+                bypassEnabled = "hyguard.message.bypass_enabled";
             }
             if (bypassDisabled == null) {
-                bypassDisabled = "Bypass disabled.";
+                bypassDisabled = "hyguard.message.bypass_disabled";
             }
             if (helpPageHeader == null) {
-                helpPageHeader = "Help page {page}/{pages}:";
+                helpPageHeader = "hyguard.message.help_page_header";
             }
             if (helpEntry == null) {
-                helpEntry = "{usage} - {description}";
+                helpEntry = "hyguard.message.help_entry";
             }
             if (helpDetailHeader == null) {
-                helpDetailHeader = "Help for /hg {command}:";
+                helpDetailHeader = "hyguard.message.help_detail_header";
             }
             if (helpDetailUsage == null) {
-                helpDetailUsage = "Usage: {usage}";
+                helpDetailUsage = "hyguard.message.help_detail_usage";
             }
             if (helpDetailDescription == null) {
-                helpDetailDescription = "Description: {description}";
+                helpDetailDescription = "hyguard.message.help_detail_description";
             }
             if (helpDetailExample == null) {
-                helpDetailExample = "Example: {example}";
+                helpDetailExample = "hyguard.message.help_detail_example";
             }
             if (helpDetailPermission == null) {
-                helpDetailPermission = "Permission: {permission}";
+                helpDetailPermission = "hyguard.message.help_detail_permission";
             }
             if (helpUnknownTopic == null) {
-                helpUnknownTopic = "Unknown help topic.";
+                helpUnknownTopic = "hyguard.message.help_unknown_topic";
             }
             if (help == null) {
-                help = "Commands: /hg wand, /hg create <name>, /hg delete <name> --confirm, /hg info [name], /hg list, /hg select <name>, /hg redefine <name>, /hg expand <dir> <amount>, /hg contract <dir> <amount>, /hg shift <dir> <amount>, /hg priority <name> <value>, /hg flag <name> <flag> <value|clear> [text], /hg flags <name>, /hg member <subcommand>, /hg tp <name>, /hg setspawn <name>, /hg gui [name], /hg backup, /hg debug pos, /hg bypass, /hg save, /hg reload, /hg help [topic]";
+                help = "hyguard.message.help";
             }
             if (regionInfo == null) {
-                regionInfo = "Region {name}: owner={owner}, world={world}, min={min}, max={max}";
+                regionInfo = "hyguard.message.region_info";
             }
         }
     }

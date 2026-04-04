@@ -1,0 +1,61 @@
+$C = "../Common.ui";
+$Hg = "HyGuardShared.ui";
+
+Group {
+  Anchor: (Left: 4, Right: 4, Height: 116, Bottom: 10);
+  Background: $Hg.@HgSurfaceAlt;
+  Padding: (Top: 12, Bottom: 12, Left: 14, Right: 14);
+
+  Label #FlagName {
+    Anchor: (Top: 0, Left: 0, Right: 320, Height: 18);
+    Style: (FontSize: 13, TextColor: #f3f9fd, RenderBold: true, VerticalAlignment: Center);
+  }
+
+  Label #FlagDescription {
+    Anchor: (Top: 24, Left: 0, Right: 320, Height: 30);
+    Style: (FontSize: 12, TextColor: #aac1cf, Wrap: true);
+  }
+
+  Label #SummaryText {
+    Anchor: (Top: 58, Left: 0, Right: 320, Height: 18);
+    Style: (FontSize: 11, TextColor: #d5ebfb, VerticalAlignment: Center);
+  }
+
+  Label #CurrentValue {
+    Anchor: (Top: 80, Left: 0, Right: 320, Height: 16);
+    Style: (FontSize: 11, TextColor: #cde4f6, VerticalAlignment: Center);
+  }
+
+  Label #ReadOnlyHint {
+    Anchor: (Top: 98, Left: 0, Right: 320, Height: 16);
+    Style: (FontSize: 11, TextColor: #d7a19f, VerticalAlignment: Center);
+    Text: "Read only: you can inspect this flag, but you cannot change it.";
+    Visible: false;
+  }
+
+  Button #ActionButton {
+    Anchor: (Top: 22, Right: 112, Width: 170, Height: 42);
+    Style: $Hg.@HgPrimaryButtonStyle;
+    Label #ActionButtonLabel { Text: "Manage"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+  }
+
+  Button #ActionButtonDisabled {
+    Anchor: (Top: 22, Right: 112, Width: 170, Height: 42);
+    Style: $Hg.@HgSecondaryButtonStyle;
+    Visible: false;
+    Label { Text: "Manage locked"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+  }
+
+  Button #ClearBtn {
+    Anchor: (Top: 22, Right: 0, Width: 96, Height: 42);
+    Style: $Hg.@HgNeutralButtonStyle;
+    Label { Text: "Clear"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+  }
+
+  Button #ClearBtnDisabled {
+    Anchor: (Top: 22, Right: 0, Width: 96, Height: 42);
+    Style: $Hg.@HgSecondaryButtonStyle;
+    Visible: false;
+    Label { Text: "Clear"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+  }
+}

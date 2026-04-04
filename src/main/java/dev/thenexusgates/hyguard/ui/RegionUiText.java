@@ -81,6 +81,8 @@ final class RegionUiText {
             case GREET_MESSAGE -> "Greeting message";
             case FAREWELL_MESSAGE -> "Farewell message";
             case ENTRY_PLAYERS -> "Player entry";
+            case ENTRY_BLACKLIST -> "Entry blacklist";
+            case COMMAND_BLACKLIST -> "Command blacklist";
             case INVINCIBLE -> "Invincibility";
             case GAME_MODE -> "Game mode lock";
             case WEATHER_LOCK -> "Weather lock";
@@ -132,6 +134,8 @@ final class RegionUiText {
             case GREET_MESSAGE -> "Message shown when a player enters the region.";
             case FAREWELL_MESSAGE -> "Message shown when a player leaves the region.";
             case ENTRY_PLAYERS -> "Controls whether players may enter the region.";
+            case ENTRY_BLACKLIST -> "Blocks listed players from entering the region, even if entry is otherwise allowed.";
+            case COMMAND_BLACKLIST -> "Blocks listed slash commands while players are inside the region.";
             case INVINCIBLE -> "Prevents players inside the region from taking damage.";
             case GAME_MODE -> "Forces players into a configured game mode while inside.";
             case WEATHER_LOCK -> "Overrides weather behavior within the region.";
@@ -176,6 +180,8 @@ final class RegionUiText {
             case ENTRY -> "entry is permitted";
             case EXIT -> "exit is permitted";
             case ENTRY_PLAYERS -> "players may enter";
+            case ENTRY_BLACKLIST -> "listed players are blocked from entering";
+            case COMMAND_BLACKLIST -> "listed slash commands are blocked";
             case INVINCIBLE -> "players become invincible";
             case WEATHER_LOCK -> "the region weather override applies";
             case TIME_LOCK -> "the region time override applies";
@@ -202,6 +208,9 @@ final class RegionUiText {
             case ENTRY_DENY_MESSAGE -> "You cannot enter this region.";
             case EXIT_DENY_MESSAGE -> "You cannot leave this region right now.";
             case GAME_MODE -> "Adventure or Creative";
+            case WEATHER_LOCK -> "0, 1, 2 or clear/rain/storm";
+            case TIME_LOCK -> "HH or HH:MM";
+            case COMMAND_BLACKLIST -> "spawn, home, warp shop, tpa*";
             default -> "";
         };
     }
@@ -216,6 +225,9 @@ final class RegionUiText {
             case ENTRY_DENY_MESSAGE -> "Explains why entry is blocked.";
             case EXIT_DENY_MESSAGE -> "Explains why exit is blocked.";
             case GAME_MODE -> "Pick a valid enforced mode instead of typing a raw enum value.";
+            case WEATHER_LOCK -> "Set a fixed weather index for players in the region. Aliases clear, rain, and storm are accepted.";
+            case TIME_LOCK -> "Set a fixed region clock using a 24-hour value such as 6, 18, or 18:30.";
+            case COMMAND_BLACKLIST -> "Enter comma-separated slash commands or subcommands to block. Entries match the command root, and a trailing * matches prefixes.";
             default -> "";
         };
     }

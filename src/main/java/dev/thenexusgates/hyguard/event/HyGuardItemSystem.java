@@ -23,15 +23,20 @@ import java.util.Set;
 
 public final class HyGuardItemSystem {
 
+    private static final Query<EntityStore> PLAYER_QUERY = Query.and(
+            Player.getComponentType(),
+            TransformComponent.getComponentType()
+    );
+
     private HyGuardItemSystem() {
     }
 
-    public static final class DropSystem extends EntityEventSystem<EntityStore, DropItemEvent> {
+    public static final class DropSystem extends EntityEventSystem<EntityStore, DropItemEvent.PlayerRequest> {
 
         private final HyGuardPlugin plugin;
 
         public DropSystem(HyGuardPlugin plugin) {
-            super(DropItemEvent.class);
+            super(DropItemEvent.PlayerRequest.class);
             this.plugin = plugin;
         }
 
@@ -40,7 +45,7 @@ public final class HyGuardItemSystem {
                            ArchetypeChunk<EntityStore> archetypeChunk,
                            Store<EntityStore> store,
                            CommandBuffer<EntityStore> commandBuffer,
-                           DropItemEvent event) {
+                           DropItemEvent.PlayerRequest event) {
             if (event == null || event.isCancelled()) {
                 return;
             }
@@ -49,7 +54,7 @@ public final class HyGuardItemSystem {
 
         @Override
         public Query<EntityStore> getQuery() {
-            return Player.getComponentType();
+            return PLAYER_QUERY;
         }
 
         @Override
@@ -60,10 +65,10 @@ public final class HyGuardItemSystem {
         private void handleAction(int index,
                                   ArchetypeChunk<EntityStore> archetypeChunk,
                                   Store<EntityStore> store,
-                                  DropItemEvent event,
+                                  DropItemEvent.PlayerRequest event,
                                   ProtectionAction action) {
             PlayerRef playerRef = store.getComponent(archetypeChunk.getReferenceTo(index), PlayerRef.getComponentType());
-            TransformComponent transform = store.getComponent(archetypeChunk.getReferenceTo(index), TransformComponent.getComponentType());
+            TransformComponent transform = archetypeChunk.getComponent(index, TransformComponent.getComponentType());
             EntityStore entityStore = store.getExternalData();
             World world = entityStore != null ? entityStore.getWorld() : null;
             if (playerRef == null || transform == null || transform.getPosition() == null || world == null) {
@@ -102,7 +107,7 @@ public final class HyGuardItemSystem {
             }
 
             PlayerRef playerRef = store.getComponent(archetypeChunk.getReferenceTo(index), PlayerRef.getComponentType());
-            TransformComponent transform = store.getComponent(archetypeChunk.getReferenceTo(index), TransformComponent.getComponentType());
+            TransformComponent transform = archetypeChunk.getComponent(index, TransformComponent.getComponentType());
             EntityStore entityStore = store.getExternalData();
             World world = entityStore != null ? entityStore.getWorld() : null;
             if (playerRef == null || transform == null || transform.getPosition() == null || world == null) {
@@ -122,7 +127,7 @@ public final class HyGuardItemSystem {
 
         @Override
         public Query<EntityStore> getQuery() {
-            return Player.getComponentType();
+            return PLAYER_QUERY;
         }
 
         @Override

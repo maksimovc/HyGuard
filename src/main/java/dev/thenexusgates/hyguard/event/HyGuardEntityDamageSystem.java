@@ -5,6 +5,8 @@ import com.hypixel.hytale.component.CommandBuffer;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
 import com.hypixel.hytale.component.SystemGroup;
+import com.hypixel.hytale.component.dependency.Dependency;
+import com.hypixel.hytale.component.dependency.RootDependency;
 import com.hypixel.hytale.component.query.Query;
 import com.hypixel.hytale.server.core.modules.entity.AllLegacyLivingEntityTypesQuery;
 import com.hypixel.hytale.server.core.entity.entities.Player;
@@ -26,9 +28,16 @@ import dev.thenexusgates.hyguard.core.region.RegionFlagValue;
 import dev.thenexusgates.hyguard.util.BlockPos;
 
 import javax.annotation.Nullable;
+import java.util.Collections;
+import java.util.Set;
 
 @SuppressWarnings("deprecation")
 public final class HyGuardEntityDamageSystem extends DamageEventSystem {
+
+    private static final Query<EntityStore> QUERY = Query.and(
+            AllLegacyLivingEntityTypesQuery.INSTANCE,
+            TransformComponent.getComponentType()
+    );
 
     private final HyGuardPlugin plugin;
 
@@ -44,7 +53,12 @@ public final class HyGuardEntityDamageSystem extends DamageEventSystem {
 
     @Override
     public Query<EntityStore> getQuery() {
-        return new AllLegacyLivingEntityTypesQuery();
+        return QUERY;
+    }
+
+    @Override
+    public Set<Dependency<EntityStore>> getDependencies() {
+        return Collections.singleton(RootDependency.first());
     }
 
     @Override
@@ -58,16 +72,16 @@ public final class HyGuardEntityDamageSystem extends DamageEventSystem {
         }
 
         Ref<EntityStore> victimRef = archetypeChunk.getReferenceTo(index);
-        TransformComponent victimTransform = commandBuffer.getComponent(victimRef, TransformComponent.getComponentType());
+        TransformComponent victimTransform = archetypeChunk.getComponent(index, TransformComponent.getComponentType());
         EntityStore entityStore = store.getExternalData();
         World world = entityStore != null ? entityStore.getWorld() : null;
         if (victimTransform == null || victimTransform.getPosition() == null || world == null) {
             return;
         }
 
-        Player victimPlayer = commandBuffer.getComponent(victimRef, Player.getComponentType());
-        PlayerRef victimPlayerRef = commandBuffer.getComponent(victimRef, PlayerRef.getComponentType());
-        PlayerRef attackerPlayerRef = resolveAttackerPlayerRef(damage, commandBuffer);
+        Player victimPlayer = store.getComponent(victimRef, Player.getComponentType());
+        PlayerRef victimPlayerRef = store.getComponent(victimRef, PlayerRef.getComponentType());
+        PlayerRef attackerPlayerRef = resolveAttackerPlayerRef(damage, store);
 
         BlockPos position = new BlockPos(
                 (int) Math.floor(victimTransform.getPosition().getX()),
@@ -100,11 +114,11 @@ public final class HyGuardEntityDamageSystem extends DamageEventSystem {
         if (attackerPlayerRef != null
                 && !plugin.evaluate(attackerPlayerRef, world.getName(), position, ProtectionAction.PVP).allowed()) {
             damage.setCancelled(true);
-            plugin.send(victimPlayerRef, plugin.getConfigSnapshot().messages.protectionDenied);
+            plugin.send(attackerPlayerRef, plugin.getConfigSnapshot().messages.protectionDenied);
             return;
         }
 
-        if (isMobDamage(damage, commandBuffer)
+        if (isMobDamage(damage, store)
                 && !plugin.evaluate(victimPlayerRef, world.getName(), position, ProtectionAction.MOB_DAMAGE_PLAYERS).allowed()) {
             damage.setCancelled(true);
             plugin.send(victimPlayerRef, plugin.getConfigSnapshot().messages.protectionDenied);
@@ -143,7 +157,7 @@ public final class HyGuardEntityDamageSystem extends DamageEventSystem {
         HyGuardKnockbackSystem.suppressKnockbackState(victimRef, knockbackComponent, knockbackSimulation, velocity, commandBuffer);
     }
 
-    private PlayerRef resolveAttackerPlayerRef(Damage damage, CommandBuffer<EntityStore> commandBuffer) {
+    private PlayerRef resolveAttackerPlayerRef(Damage damage, Store<EntityStore> store) {
         Damage.Source source = damage.getSource();
         if (!(source instanceof Damage.EntitySource entitySource)) {
             return null;
@@ -154,14 +168,14 @@ public final class HyGuardEntityDamageSystem extends DamageEventSystem {
             return null;
         }
 
-        Player attackerPlayer = commandBuffer.getComponent(attackerRef, Player.getComponentType());
+        Player attackerPlayer = store.getComponent(attackerRef, Player.getComponentType());
         if (attackerPlayer == null) {
             return null;
         }
-        return commandBuffer.getComponent(attackerRef, PlayerRef.getComponentType());
+        return store.getComponent(attackerRef, PlayerRef.getComponentType());
     }
 
-    private boolean isMobDamage(Damage damage, CommandBuffer<EntityStore> commandBuffer) {
+    private boolean isMobDamage(Damage damage, Store<EntityStore> store) {
         Damage.Source source = damage.getSource();
         if (!(source instanceof Damage.EntitySource entitySource)) {
             return false;
@@ -172,6 +186,6 @@ public final class HyGuardEntityDamageSystem extends DamageEventSystem {
             return false;
         }
 
-        return commandBuffer.getComponent(attackerRef, Player.getComponentType()) == null;
+        return store.getComponent(attackerRef, Player.getComponentType()) == null;
     }
 }

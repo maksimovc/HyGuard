@@ -2,26 +2,36 @@ package dev.thenexusgates.hyguard;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.hypixel.hytale.component.CommandBuffer;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
 import com.hypixel.hytale.event.EventPriority;
 import com.hypixel.hytale.math.vector.Transform;
 import com.hypixel.hytale.math.vector.Vector3d;
+import com.hypixel.hytale.builtin.weather.components.WeatherTracker;
 import com.hypixel.hytale.protocol.GameMode;
+import com.hypixel.hytale.protocol.MovementStates;
+import com.hypixel.hytale.protocol.SavedMovementStates;
+import com.hypixel.hytale.protocol.packets.setup.SetTimeDilation;
+import com.hypixel.hytale.protocol.packets.world.UpdateTime;
 import com.hypixel.hytale.server.core.asset.type.item.config.Item;
 import com.hypixel.hytale.server.core.HytaleServer;
 import com.hypixel.hytale.server.core.Message;
 import com.hypixel.hytale.server.core.NameMatching;
 import com.hypixel.hytale.server.core.entity.ItemUtils;
 import com.hypixel.hytale.server.core.entity.entities.Player;
+import com.hypixel.hytale.server.core.entity.movement.MovementStatesComponent;
 import com.hypixel.hytale.server.core.event.events.player.DrainPlayerFromWorldEvent;
 import com.hypixel.hytale.server.core.event.events.player.RemovedPlayerFromWorldEvent;
+import com.hypixel.hytale.server.core.event.events.player.PlayerChatEvent;
 import com.hypixel.hytale.server.core.event.events.player.PlayerInteractEvent;
 import com.hypixel.hytale.server.core.entity.entities.player.movement.MovementManager;
 import com.hypixel.hytale.server.core.inventory.ItemStack;
 import com.hypixel.hytale.server.core.modules.entity.EntityModule;
 import com.hypixel.hytale.server.core.modules.interaction.interaction.config.Interaction;
 import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
+import com.hypixel.hytale.server.core.modules.time.TimeResource;
+import com.hypixel.hytale.server.core.modules.time.WorldTimeResource;
 import com.hypixel.hytale.server.core.modules.entity.teleport.Teleport;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
@@ -50,6 +60,8 @@ import dev.thenexusgates.hyguard.event.HyGuardChangeGameModeSystem;
 import dev.thenexusgates.hyguard.event.DisconnectCleanupSystem;
 import dev.thenexusgates.hyguard.event.HyGuardDamageBlockSystem;
 import dev.thenexusgates.hyguard.event.HyGuardEntityDamageSystem;
+import dev.thenexusgates.hyguard.event.HyGuardBoundaryFluidSystem;
+import dev.thenexusgates.hyguard.event.HyGuardCommandListener;
 import dev.thenexusgates.hyguard.event.HyGuardInteractionListener;
 import dev.thenexusgates.hyguard.event.HyGuardItemSystem;
 import dev.thenexusgates.hyguard.event.HyGuardKnockbackBypassMarker;
@@ -67,6 +79,7 @@ import dev.thenexusgates.hyguard.storage.JsonRegionRepository;
 import dev.thenexusgates.hyguard.storage.PlayerDirectory;
 import dev.thenexusgates.hyguard.storage.RegionCache;
 import dev.thenexusgates.hyguard.storage.RegionRepository;
+import dev.thenexusgates.hyguard.ui.EntryBlacklistPage;
 import dev.thenexusgates.hyguard.ui.FlagEditorPage;
 import dev.thenexusgates.hyguard.ui.MemberManagerPage;
 import dev.thenexusgates.hyguard.ui.RegionBrowserPage;
@@ -87,15 +100,22 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public final class HyGuardPlugin extends JavaPlugin {
 
@@ -158,6 +178,8 @@ public final class HyGuardPlugin extends JavaPlugin {
     private static final String SERVER_REGION_OWNER_UUID = "__server__";
     private static final String SERVER_REGION_OWNER_NAME = "Server";
     private static final long WAND_LEFT_CLICK_DEBOUNCE_MS = 1500L;
+    private static final String SERIALIZED_PLAYER_IDENTITY_SEPARATOR = "\n";
+    private static final String SERIALIZED_PLAYER_IDENTITY_DELIMITER = "\t";
 
     private Path dataDirectory;
     private Path configPath;
@@ -177,6 +199,7 @@ public final class HyGuardPlugin extends JavaPlugin {
     private EnterExitMessageRenderer enterExitMessageRenderer;
     private SelectionVisualizer selectionVisualizer;
     private PlayerMoveSystem playerMoveSystem;
+    private HyGuardBoundaryFluidSystem boundaryFluidSystem;
     private DisconnectCleanupSystem disconnectCleanupSystem;
     private final ConcurrentHashMap<String, WandLeftClickState> recentWandLeftClicks = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, SelectionSnapshot> lastClearedSelections = new ConcurrentHashMap<>();
@@ -209,7 +232,8 @@ public final class HyGuardPlugin extends JavaPlugin {
         visualScheduler = new VisualScheduler(HytaleServer.SCHEDULED_EXECUTOR);
         enterExitMessageRenderer = new EnterExitMessageRenderer(this);
         selectionVisualizer = new SelectionVisualizer(visualScheduler);
-        playerMoveSystem = new PlayerMoveSystem(this, HytaleServer.SCHEDULED_EXECUTOR, enterExitMessageRenderer);
+        playerMoveSystem = new PlayerMoveSystem(this, enterExitMessageRenderer);
+        boundaryFluidSystem = new HyGuardBoundaryFluidSystem(this);
         disconnectCleanupSystem = new DisconnectCleanupSystem(this);
 
         getCodecRegistry(Interaction.CODEC).register(
@@ -221,6 +245,7 @@ public final class HyGuardPlugin extends JavaPlugin {
         getEventRegistry().registerGlobal(com.hypixel.hytale.server.core.event.events.player.PlayerDisconnectEvent.class, disconnectCleanupSystem::handle);
         getEventRegistry().registerGlobal(RemovedPlayerFromWorldEvent.class, disconnectCleanupSystem::handle);
         getEventRegistry().registerGlobal(DrainPlayerFromWorldEvent.class, disconnectCleanupSystem::handle);
+        getEventRegistry().registerGlobal(EventPriority.FIRST, PlayerChatEvent.class, new HyGuardCommandListener(this)::handle);
         getEventRegistry().registerGlobal(EventPriority.FIRST, PlayerInteractEvent.class, new HyGuardInteractionListener(this)::handle);
 
         if (EntityModule.get() != null) {
@@ -239,10 +264,9 @@ public final class HyGuardPlugin extends JavaPlugin {
             getEntityStoreRegistry().registerSystem(new HyGuardKnockbackSystem(this));
             getEntityStoreRegistry().registerSystem(new HyGuardItemSystem.DropSystem(this));
             getEntityStoreRegistry().registerSystem(new HyGuardItemSystem.PickupSystem(this));
+            getEntityStoreRegistry().registerSystem(playerMoveSystem);
+            getEntityStoreRegistry().registerSystem(boundaryFluidSystem);
             getLogger().at(Level.INFO).log(HyGuardMobSpawnSystem.NO_API_REASON);
-        }
-        if (playerMoveSystem != null) {
-            playerMoveSystem.start();
         }
 
         long worldCount = regionCache.allRegions().stream()
@@ -550,11 +574,34 @@ public final class HyGuardPlugin extends JavaPlugin {
                 .toList();
     }
 
+        public List<String> getKnownWorldIds() {
+        return regionCache.allRegions().stream()
+            .map(Region::getWorldId)
+            .filter(worldId -> worldId != null && !worldId.isBlank())
+            .distinct()
+            .sorted(String.CASE_INSENSITIVE_ORDER)
+            .toList();
+        }
+
+        public List<Region> getAllRegions() {
+        return regionCache.allRegions().stream()
+            .sorted(Comparator
+                .comparing(Region::getWorldId, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                .thenComparing(Region::getName, String.CASE_INSENSITIVE_ORDER))
+            .toList();
+        }
+
     public List<Region> getDisplayRootRegions(String worldId) {
         return getWorldRegions(worldId).stream()
                 .filter(region -> !isNestedDisplayChild(region))
                 .toList();
     }
+
+        public List<Region> getAllDisplayRootRegions() {
+        return getAllRegions().stream()
+            .filter(region -> !isNestedDisplayChild(region))
+            .toList();
+        }
 
     public List<Region> getDisplayChildRegions(Region parentRegion) {
         if (parentRegion == null || parentRegion.isGlobal()) {
@@ -955,6 +1002,103 @@ public final class HyGuardPlugin extends JavaPlugin {
         return storedPlayer == null ? null : new PlayerIdentity(storedPlayer.uuid(), storedPlayer.username());
     }
 
+    public List<PlayerIdentity> getKnownPlayerIdentities() {
+        if (playerDirectory == null) {
+            return List.of();
+        }
+        return playerDirectory.allPlayers().stream()
+                .map(storedPlayer -> new PlayerIdentity(storedPlayer.uuid(), storedPlayer.username()))
+                .sorted(Comparator.comparing(PlayerIdentity::username, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+    }
+
+    public List<PlayerIdentity> getEntryBlacklist(Region region) {
+        if (region == null) {
+            return List.of();
+        }
+        RegionFlagValue flagValue = region.getFlags().get(RegionFlag.ENTRY_BLACKLIST);
+        if (flagValue == null || flagValue.getTextValue() == null || flagValue.getTextValue().isBlank()) {
+            return List.of();
+        }
+        return decodePlayerIdentities(flagValue.getTextValue());
+    }
+
+    public boolean isEntryBlacklisted(Region region, PlayerRef playerRef) {
+        if (region == null || playerRef == null || playerRef.getUuid() == null) {
+            return false;
+        }
+        String playerUuid = playerRef.getUuid().toString();
+        for (PlayerIdentity identity : getEntryBlacklist(region)) {
+            if (identity.uuid() != null && identity.uuid().equalsIgnoreCase(playerUuid)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void setEntryBlacklist(Region region, Collection<PlayerIdentity> identities) {
+        if (region == null) {
+            return;
+        }
+
+        String encoded = encodePlayerIdentities(identities);
+        if (encoded.isBlank()) {
+            region.removeFlag(RegionFlag.ENTRY_BLACKLIST);
+            return;
+        }
+
+        region.putFlag(RegionFlag.ENTRY_BLACKLIST, new RegionFlagValue(RegionFlagValue.Mode.ALLOW, encoded));
+    }
+
+    public int countStoredPlayerIdentities(String raw) {
+        return decodePlayerIdentities(raw).size();
+    }
+
+    public String sanitizeCommandBlacklist(String raw) {
+        List<String> patterns = decodeCommandBlacklist(raw);
+        return patterns.isEmpty() ? "" : String.join(", ", patterns);
+    }
+
+    public int countConfiguredCommandBlacklist(String raw) {
+        return decodeCommandBlacklist(raw).size();
+    }
+
+    public boolean isCommandBlacklisted(PlayerRef playerRef, String worldId, BlockPos position, String rawCommand) {
+        if (playerRef == null || worldId == null || position == null || rawCommand == null) {
+            return false;
+        }
+        if (canBypassProtection(playerRef)) {
+            return false;
+        }
+
+        String normalizedCommand = normalizeIssuedCommand(rawCommand);
+        if (normalizedCommand.isBlank()) {
+            return false;
+        }
+
+        for (Region region : getRegionsAt(worldId, position)) {
+            RegionFlagValue flagValue = region.getFlags().get(RegionFlag.COMMAND_BLACKLIST);
+            if (flagValue == null || flagValue.getMode() == RegionFlagValue.Mode.INHERIT) {
+                continue;
+            }
+            for (String pattern : decodeCommandBlacklist(flagValue.getTextValue())) {
+                if (matchesCommandBlacklistPattern(normalizedCommand, pattern)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public String resolvePlayerWorldId(PlayerRef playerRef) {
+        if (playerRef == null || playerRef.getWorldUuid() == null) {
+            return null;
+        }
+        Universe universe = Universe.get();
+        World world = universe == null ? null : universe.getWorld(playerRef.getWorldUuid());
+        return world == null ? null : world.getName();
+    }
+
     public GameMode parseConfiguredGameMode(String raw) {
         if (raw == null || raw.isBlank()) {
             return null;
@@ -964,6 +1108,46 @@ public final class HyGuardPlugin extends JavaPlugin {
             case "adventure", "survival" -> GameMode.Adventure;
             default -> null;
         };
+    }
+
+    public Integer parseConfiguredWeatherLock(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+
+        return switch (raw.trim().toLowerCase(java.util.Locale.ROOT)) {
+            case "clear", "sunny" -> 0;
+            case "rain", "rainy" -> 1;
+            case "storm", "thunder", "thunderstorm" -> 2;
+            default -> {
+                try {
+                    int index = Integer.parseInt(raw.trim());
+                    yield index < 0 ? null : index;
+                } catch (NumberFormatException numberFormatException) {
+                    yield null;
+                }
+            }
+        };
+    }
+
+    public LocalTime parseConfiguredTimeLock(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+
+        String trimmed = raw.trim();
+        try {
+            if (trimmed.contains(":")) {
+                String[] parts = trimmed.split(":", 2);
+                if (parts.length != 2) {
+                    return null;
+                }
+                return LocalTime.of(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
+            }
+            return LocalTime.of(Integer.parseInt(trimmed), 0);
+        } catch (RuntimeException runtimeException) {
+            return null;
+        }
     }
 
     public GameMode resolveEnforcedGameMode(PlayerRef playerRef, String worldId, BlockPos position) {
@@ -985,6 +1169,7 @@ public final class HyGuardPlugin extends JavaPlugin {
         List<Region> regions = getRegionsAt(worldId, position);
         applyRegionGameMode(store, entityRef, playerRef, regions);
         applyRegionFly(store, entityRef, playerRef, regions);
+        applyRegionTimeAndWeather(store, entityRef, playerRef, regions);
     }
 
     public ProtectionResult evaluate(PlayerRef playerRef, String worldId, BlockPos position, ProtectionAction action) {
@@ -1036,6 +1221,31 @@ public final class HyGuardPlugin extends JavaPlugin {
         return true;
     }
 
+    public boolean teleportToRegion(CommandBuffer<EntityStore> commandBuffer,
+                                    Store<EntityStore> store,
+                                    Ref<EntityStore> entityRef,
+                                    PlayerRef playerRef,
+                                    Region region) {
+        if (commandBuffer == null || store == null || entityRef == null || playerRef == null || region == null) {
+            return false;
+        }
+        if (region.isGlobal() && region.getSpawnPoint() == null) {
+            return false;
+        }
+        TransformComponent transform = store.getComponent(entityRef, TransformComponent.getComponentType());
+        if (transform == null) {
+            return false;
+        }
+        Vector3d destination = resolveRegionTeleportPosition(region);
+        World currentWorld = store.getExternalData() == null ? null : store.getExternalData().getWorld();
+        if (currentWorld == null) {
+            transform.teleportPosition(destination);
+            return true;
+        }
+        commandBuffer.putComponent(entityRef, Teleport.getComponentType(), Teleport.createForPlayer(currentWorld, destination, transform.getRotation()));
+        return true;
+    }
+
     public boolean teleportToPosition(Store<EntityStore> store, Ref<EntityStore> entityRef, BlockPos position) {
         if (store == null || entityRef == null || position == null) {
             return false;
@@ -1051,6 +1261,27 @@ public final class HyGuardPlugin extends JavaPlugin {
             return true;
         }
         store.putComponent(entityRef, Teleport.getComponentType(), Teleport.createForPlayer(currentWorld, destination, transform.getRotation()));
+        return true;
+    }
+
+    public boolean teleportToPosition(CommandBuffer<EntityStore> commandBuffer,
+                                      Store<EntityStore> store,
+                                      Ref<EntityStore> entityRef,
+                                      BlockPos position) {
+        if (commandBuffer == null || store == null || entityRef == null || position == null) {
+            return false;
+        }
+        TransformComponent transform = store.getComponent(entityRef, TransformComponent.getComponentType());
+        if (transform == null) {
+            return false;
+        }
+        Vector3d destination = new Vector3d(position.getX() + 0.5, position.getY(), position.getZ() + 0.5);
+        World currentWorld = store.getExternalData() == null ? null : store.getExternalData().getWorld();
+        if (currentWorld == null) {
+            transform.teleportPosition(destination);
+            return true;
+        }
+        commandBuffer.putComponent(entityRef, Teleport.getComponentType(), Teleport.createForPlayer(currentWorld, destination, transform.getRotation()));
         return true;
     }
 
@@ -1156,15 +1387,19 @@ public final class HyGuardPlugin extends JavaPlugin {
         return List.copyOf(positions);
     }
 
-    public void openRegionBrowser(Store<EntityStore> store, Ref<EntityStore> entityRef, PlayerRef playerRef, World world) {
-        if (store == null || entityRef == null || playerRef == null || world == null) {
+    public void openRegionBrowser(Store<EntityStore> store, Ref<EntityStore> entityRef, PlayerRef playerRef) {
+        if (store == null || entityRef == null || playerRef == null) {
             return;
         }
         Player player = store.getComponent(entityRef, Player.getComponentType());
         if (player == null) {
             return;
         }
-        player.getPageManager().openCustomPage(entityRef, store, new RegionBrowserPage(playerRef, this, world.getName()));
+        player.getPageManager().openCustomPage(entityRef, store, new RegionBrowserPage(playerRef, this));
+    }
+
+    public void openRegionBrowser(Store<EntityStore> store, Ref<EntityStore> entityRef, PlayerRef playerRef, World world) {
+        openRegionBrowser(store, entityRef, playerRef);
     }
 
     public void openChildRegionBrowser(Store<EntityStore> store,
@@ -1204,6 +1439,17 @@ public final class HyGuardPlugin extends JavaPlugin {
         player.getPageManager().openCustomPage(entityRef, store, new MemberManagerPage(playerRef, this, worldId, regionName));
     }
 
+    public void openEntryBlacklistManager(Store<EntityStore> store, Ref<EntityStore> entityRef, PlayerRef playerRef, String worldId, String regionName) {
+        if (store == null || entityRef == null || playerRef == null || worldId == null || regionName == null) {
+            return;
+        }
+        Player player = store.getComponent(entityRef, Player.getComponentType());
+        if (player == null) {
+            return;
+        }
+        player.getPageManager().openCustomPage(entityRef, store, new EntryBlacklistPage(playerRef, this, worldId, regionName));
+    }
+
     public void openFlagEditor(Store<EntityStore> store, Ref<EntityStore> entityRef, PlayerRef playerRef, String worldId, String regionName) {
         if (store == null || entityRef == null || playerRef == null || worldId == null || regionName == null) {
             return;
@@ -1213,6 +1459,119 @@ public final class HyGuardPlugin extends JavaPlugin {
             return;
         }
         player.getPageManager().openCustomPage(entityRef, store, new FlagEditorPage(playerRef, this, worldId, regionName));
+    }
+
+    private List<PlayerIdentity> decodePlayerIdentities(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+
+        LinkedHashMap<String, PlayerIdentity> identities = new LinkedHashMap<>();
+        for (String line : raw.split(SERIALIZED_PLAYER_IDENTITY_SEPARATOR)) {
+            if (line == null || line.isBlank()) {
+                continue;
+            }
+
+            String[] parts = line.split(SERIALIZED_PLAYER_IDENTITY_DELIMITER, 2);
+            String uuid = parts.length > 0 ? parts[0].trim() : "";
+            String username = parts.length > 1 ? parts[1].trim() : uuid;
+            if (uuid.isBlank() || username.isBlank()) {
+                continue;
+            }
+            identities.put(uuid, new PlayerIdentity(uuid, username));
+        }
+        return List.copyOf(identities.values());
+    }
+
+    private List<String> decodeCommandBlacklist(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+
+        LinkedHashSet<String> patterns = new LinkedHashSet<>();
+        for (String token : raw.split("[,;\r\n]+")) {
+            String normalized = normalizeCommandBlacklistPattern(token);
+            if (!normalized.isBlank()) {
+                patterns.add(normalized);
+            }
+        }
+        return List.copyOf(patterns);
+    }
+
+    private String normalizeIssuedCommand(String rawCommand) {
+        return normalizeCommandToken(rawCommand);
+    }
+
+    private String normalizeCommandBlacklistPattern(String rawPattern) {
+        if (rawPattern == null) {
+            return "";
+        }
+
+        String trimmed = rawPattern.trim();
+        boolean wildcard = trimmed.endsWith("*");
+        String normalized = normalizeCommandToken(wildcard ? trimmed.substring(0, trimmed.length() - 1) : trimmed);
+        if (normalized.isBlank()) {
+            return "";
+        }
+        return wildcard ? normalized + "*" : normalized;
+    }
+
+    private String normalizeCommandToken(String rawValue) {
+        if (rawValue == null) {
+            return "";
+        }
+
+        String normalized = rawValue.trim();
+        while (normalized.startsWith("/")) {
+            normalized = normalized.substring(1).trim();
+        }
+        normalized = normalized.replaceAll("\\s+", " ").trim().toLowerCase(Locale.ROOT);
+        return normalized;
+    }
+
+    private boolean matchesCommandBlacklistPattern(String normalizedCommand, String pattern) {
+        if (normalizedCommand == null || normalizedCommand.isBlank() || pattern == null || pattern.isBlank()) {
+            return false;
+        }
+        if (pattern.endsWith("*")) {
+            String prefix = pattern.substring(0, pattern.length() - 1).trim();
+            return !prefix.isBlank() && normalizedCommand.startsWith(prefix);
+        }
+        return normalizedCommand.equals(pattern) || normalizedCommand.startsWith(pattern + " ");
+    }
+
+    private String encodePlayerIdentities(Collection<PlayerIdentity> identities) {
+        if (identities == null || identities.isEmpty()) {
+            return "";
+        }
+
+        return identities.stream()
+                .filter(identity -> identity != null
+                        && identity.uuid() != null
+                        && !identity.uuid().isBlank()
+                        && identity.username() != null
+                        && !identity.username().isBlank())
+                .collect(Collectors.toMap(
+                        PlayerIdentity::uuid,
+                        identity -> identity,
+                        (left, right) -> right,
+                        LinkedHashMap::new
+                ))
+                .values()
+                .stream()
+                .sorted(Comparator.comparing(PlayerIdentity::username, String.CASE_INSENSITIVE_ORDER))
+                .map(identity -> identity.uuid() + SERIALIZED_PLAYER_IDENTITY_DELIMITER + sanitizeSerializedPlayerField(identity.username()))
+                .collect(Collectors.joining(SERIALIZED_PLAYER_IDENTITY_SEPARATOR));
+    }
+
+    private String sanitizeSerializedPlayerField(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace(SERIALIZED_PLAYER_IDENTITY_SEPARATOR, " ")
+                .replace(SERIALIZED_PLAYER_IDENTITY_DELIMITER, " ")
+                .trim();
     }
 
     private HyGuardConfig loadConfig() {
@@ -1525,6 +1884,38 @@ public final class HyGuardPlugin extends JavaPlugin {
         return null;
     }
 
+    private Integer resolveLockedWeather(PlayerRef playerRef, List<Region> regions) {
+        for (Region region : regions) {
+            RegionFlagValue flagValue = region.getFlags().get(RegionFlag.WEATHER_LOCK);
+            if (flagValue == null || flagValue.getMode() == RegionFlagValue.Mode.INHERIT) {
+                continue;
+            }
+
+            Integer configuredWeather = parseConfiguredWeatherLock(flagValue.getTextValue());
+            if (configuredWeather == null) {
+                continue;
+            }
+            return isFlagGranted(region, playerRef, flagValue) ? configuredWeather : null;
+        }
+        return null;
+    }
+
+    private LocalTime resolveLockedTime(PlayerRef playerRef, List<Region> regions) {
+        for (Region region : regions) {
+            RegionFlagValue flagValue = region.getFlags().get(RegionFlag.TIME_LOCK);
+            if (flagValue == null || flagValue.getMode() == RegionFlagValue.Mode.INHERIT) {
+                continue;
+            }
+
+            LocalTime configuredTime = parseConfiguredTimeLock(flagValue.getTextValue());
+            if (configuredTime == null) {
+                continue;
+            }
+            return isFlagGranted(region, playerRef, flagValue) ? configuredTime : null;
+        }
+        return null;
+    }
+
     private void applyRegionGameMode(Store<EntityStore> store,
                                      Ref<EntityStore> entityRef,
                                      PlayerRef playerRef,
@@ -1556,9 +1947,87 @@ public final class HyGuardPlugin extends JavaPlugin {
             desiredCanFly = enforcedFly;
         }
 
+        boolean changed = false;
+        if (movementManager.getDefaultSettings() != null && movementManager.getDefaultSettings().canFly != desiredCanFly) {
+            movementManager.getDefaultSettings().canFly = desiredCanFly;
+            changed = true;
+        }
+
         if (movementManager.getSettings().canFly != desiredCanFly) {
             movementManager.getSettings().canFly = desiredCanFly;
+            changed = true;
+        }
+
+        if (!desiredCanFly) {
+            MovementStatesComponent movementStatesComponent = store.getComponent(entityRef, MovementStatesComponent.getComponentType());
+            MovementStates currentStates = movementStatesComponent == null ? null : movementStatesComponent.getMovementStates();
+            if (currentStates != null && currentStates.flying) {
+                MovementStates updatedStates = new MovementStates(currentStates);
+                updatedStates.flying = false;
+                player.applyMovementStates(entityRef, new SavedMovementStates(false), updatedStates, store);
+                changed = true;
+            }
+        }
+
+        if (changed) {
             movementManager.update(playerRef.getPacketHandler());
+        }
+    }
+
+    private void applyRegionTimeAndWeather(Store<EntityStore> store,
+                                           Ref<EntityStore> entityRef,
+                                           PlayerRef playerRef,
+                                           List<Region> regions) {
+        if (store == null || entityRef == null || playerRef == null || playerRef.getPacketHandler() == null) {
+            return;
+        }
+
+        applyRegionWeather(store, entityRef, playerRef, regions);
+        applyRegionTime(store, playerRef, regions);
+    }
+
+    private void applyRegionWeather(Store<EntityStore> store,
+                                    Ref<EntityStore> entityRef,
+                                    PlayerRef playerRef,
+                                    List<Region> regions) {
+        WeatherTracker weatherTracker = store.getComponent(entityRef, WeatherTracker.getComponentType());
+        if (weatherTracker == null) {
+            return;
+        }
+
+        Integer lockedWeather = resolveLockedWeather(playerRef, regions);
+        if (lockedWeather != null) {
+            weatherTracker.sendWeatherIndex(playerRef, lockedWeather, 0f);
+            return;
+        }
+
+        weatherTracker.sendWeatherIndex(playerRef, weatherTracker.getWeatherIndex(), 0f);
+    }
+
+    private void applyRegionTime(Store<EntityStore> store,
+                                 PlayerRef playerRef,
+                                 List<Region> regions) {
+        WorldTimeResource worldTimeResource = store.getResource(WorldTimeResource.getResourceType());
+        if (worldTimeResource == null || playerRef.getPacketHandler() == null) {
+            return;
+        }
+
+        LocalTime lockedTime = resolveLockedTime(playerRef, regions);
+        if (lockedTime != null) {
+            LocalDateTime lockedDateTime = worldTimeResource.getGameDateTime()
+                    .withHour(lockedTime.getHour())
+                    .withMinute(lockedTime.getMinute())
+                    .withSecond(0)
+                    .withNano(0);
+            playerRef.getPacketHandler().write(new SetTimeDilation(0f));
+            playerRef.getPacketHandler().write(new UpdateTime(WorldTimeResource.instantToInstantData(lockedDateTime.toInstant(WorldTimeResource.ZONE_OFFSET))));
+            return;
+        }
+
+        worldTimeResource.sendTimePackets(playerRef);
+        TimeResource timeResource = store.getResource(TimeResource.getResourceType());
+        if (timeResource != null) {
+            playerRef.getPacketHandler().write(new SetTimeDilation(timeResource.getTimeDilationModifier()));
         }
     }
 

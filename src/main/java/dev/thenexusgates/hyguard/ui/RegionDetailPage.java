@@ -79,7 +79,7 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
 
         switch (data.action) {
             case "Back" -> {
-                plugin.openRegionBrowser(store, entityRef, playerRef, store.getExternalData().getWorld());
+                plugin.openRegionBrowser(store, entityRef, playerRef);
                 return;
             }
             case "Close" -> {
@@ -156,7 +156,7 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
                 } else if (plugin.deleteRegion(region)) {
                     plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionDeleted, Map.of("name", region.getName()));
                     plugin.playDeleteSound(playerRef);
-                    plugin.openRegionBrowser(store, entityRef, playerRef, store.getExternalData().getWorld());
+                    plugin.openRegionBrowser(store, entityRef, playerRef);
                     return;
                 }
             }

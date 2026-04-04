@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -18,6 +20,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class PlayerDirectory {
+
+    private static final long SAVE_DEBOUNCE_MS = 15_000L;
 
     public record StoredPlayer(String uuid, String username, long lastSeenAt) {
     }
@@ -67,11 +71,18 @@ public final class PlayerDirectory {
         }
 
         StoredPlayer previous = byUuid.get(uuid);
+        long now = System.currentTimeMillis();
+        if (previous != null
+                && username.equals(previous.username())
+                && now - previous.lastSeenAt() < SAVE_DEBOUNCE_MS) {
+            return;
+        }
+
         if (previous != null && previous.username() != null) {
             uuidByName.remove(normalize(previous.username()), uuid);
         }
 
-        StoredPlayer storedPlayer = new StoredPlayer(uuid, username, System.currentTimeMillis());
+        StoredPlayer storedPlayer = new StoredPlayer(uuid, username, now);
         byUuid.put(uuid, storedPlayer);
         uuidByName.put(normalize(username), uuid);
         saveExecutor.execute(() -> savePlayer(storedPlayer));
@@ -80,6 +91,12 @@ public final class PlayerDirectory {
     public StoredPlayer findByName(String username) {
         String uuid = uuidByName.get(normalize(username));
         return uuid == null ? null : byUuid.get(uuid);
+    }
+
+    public List<StoredPlayer> allPlayers() {
+        return byUuid.values().stream()
+                .sorted(Comparator.comparing(StoredPlayer::username, String.CASE_INSENSITIVE_ORDER))
+                .toList();
     }
 
     public void flush() {

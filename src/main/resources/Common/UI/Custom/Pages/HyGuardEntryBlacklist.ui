@@ -1,0 +1,118 @@
+$C = "../Common.ui";
+$Hg = "HyGuardShared.ui";
+
+$C.@PageOverlay {
+  $C.@Container {
+    Anchor: (Width: 1080, Height: 740);
+    Background: $Hg.@HgPanelBackground;
+
+    Button #BackButton {
+      Anchor: (Top: 24, Left: 28, Width: 102, Height: 42);
+      Style: $Hg.@HgSecondaryButtonStyle;
+      Label { Text: "Back"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+    }
+
+    Label #PageTitle {
+      Text: "Entry Blacklist";
+      Style: $Hg.@HgTitleStyle;
+      Anchor: (Top: 28, Left: 148, Right: 148, Height: 26);
+    }
+
+    Label #Subtitle {
+      Style: $Hg.@HgMetaStyle;
+      Anchor: (Top: 58, Left: 148, Right: 148, Height: 32);
+    }
+
+    Button #CloseIconButton {
+      Anchor: (Top: 24, Right: 28, Width: 42, Height: 42);
+      Style: $Hg.@HgSecondaryButtonStyle;
+      Label { Text: "X"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+    }
+
+    Group #StatusCard {
+      Anchor: (Top: 108, Left: 28, Right: 28, Height: 60);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 12, Bottom: 12, Left: 18, Right: 18);
+
+      Group #StatusInfo { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgPrimary; Visible: false; }
+      Group #StatusSuccess { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgPositive; Visible: false; }
+      Group #StatusWarning { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgDangerHover; Visible: false; }
+      Group #StatusError { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgDanger; Visible: false; }
+
+      Label { Text: "Status"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 18, Width: 80, Height: 16); }
+      Label #StatusText { Style: $Hg.@HgBodyStyle; Anchor: (Top: 22, Left: 18, Right: 0, Height: 18); }
+    }
+
+    Group #PlayersPanel {
+      Anchor: (Top: 186, Left: 28, Width: 420, Bottom: 28);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
+
+      Label { Text: "Known players"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 160, Height: 18); }
+      Label #BlacklistSummary { Style: $Hg.@HgMetaStyle; Anchor: (Top: 24, Left: 0, Right: 0, Height: 18); }
+
+      Group #PlayerScrollArea {
+        Anchor: (Top: 56, Left: 0, Right: 0, Bottom: 0);
+        LayoutMode: TopScrolling;
+        ScrollbarStyle: $C.@DefaultScrollbarStyle;
+
+        Group #PlayerRowsGroup {
+          LayoutMode: Top;
+        }
+      }
+    }
+
+    Group #InputCard {
+      Anchor: (Top: 186, Left: 466, Right: 28, Height: 212);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
+
+      Label { Text: "Add or remove player"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 220, Height: 18); }
+      Label { Text: "Username"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 34, Left: 0, Width: 90, Height: 16); }
+
+      Group {
+        Anchor: (Top: 54, Left: 0, Right: 0, Height: 40);
+        Background: $Hg.@HgInputBackground;
+        OutlineColor: $Hg.@HgOutline;
+        OutlineSize: 1;
+        Padding: (Left: 10, Right: 10, Top: 6, Bottom: 6);
+
+        TextField #SearchInput {
+          Anchor: (Full: 0);
+          Style: $Hg.@HgInputStyle;
+          PlaceholderText: "Type a remembered or online username";
+          PlaceholderStyle: $C.@DefaultInputFieldPlaceholderStyle;
+        }
+      }
+
+      Button #AddButton {
+        Anchor: (Top: 112, Left: 0, Width: 180, Height: 42);
+        Style: $Hg.@HgPrimaryButtonStyle;
+        Label { Text: "Add To Blacklist"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+      }
+
+      Button #RemoveButton {
+        Anchor: (Top: 112, Left: 194, Width: 180, Height: 42);
+        Style: $Hg.@HgDangerButtonStyle;
+        Label { Text: "Remove"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+      }
+
+      Label {
+        Text: "Click a known player to prefill the field, or type a username manually if they are remembered or currently online.";
+        Style: $Hg.@HgMetaStyle;
+        Anchor: (Top: 168, Left: 0, Right: 0, Height: 28);
+      }
+    }
+
+    Group #SelectedCard {
+      Anchor: (Top: 416, Left: 466, Right: 28, Bottom: 28);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
+
+      Label { Text: "Selected player"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 180, Height: 18); }
+      Label #SelectedName { Style: $Hg.@HgBodyStyle; Anchor: (Top: 34, Left: 0, Right: 0, Height: 22); }
+      Label #SelectedState { Style: $Hg.@HgMetaStyle; Anchor: (Top: 62, Left: 0, Right: 0, Height: 18); }
+      Label #SelectedHint { Style: $Hg.@HgMetaStyle; Anchor: (Top: 92, Left: 0, Right: 0, Height: 54); }
+    }
+  }
+}

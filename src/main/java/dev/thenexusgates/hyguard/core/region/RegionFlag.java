@@ -41,6 +41,8 @@ public enum RegionFlag {
     GREET_MESSAGE,
     FAREWELL_MESSAGE,
     ENTRY_PLAYERS,
+    ENTRY_BLACKLIST,
+    COMMAND_BLACKLIST,
     INVINCIBLE,
     GAME_MODE,
     WEATHER_LOCK,
@@ -54,11 +56,14 @@ public enum RegionFlag {
             BLOCK_SPREAD,
             BLOCK_FADE,
             BLOCK_FORM,
+                INTERACT_INVENTORY,
             MOB_DAMAGE_BLOCKS,
             MOB_GRIEF,
             ANIMAL_DAMAGE,
             TNT,
-            LIGHTNING
+            LIGHTNING,
+                ENTRY_PLAYERS,
+                EXPLOSION_BLOCK_DAMAGE
     );
 
     public boolean isUserVisible() {

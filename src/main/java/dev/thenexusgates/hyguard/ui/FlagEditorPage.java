@@ -60,6 +60,9 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
                 .append(new KeyedCodec<>("@FarewellMessageInput", Codec.STRING), (data, value) -> data.farewellMessageInput = value, data -> data.farewellMessageInput).add()
                 .append(new KeyedCodec<>("@EntryDenyMessageInput", Codec.STRING), (data, value) -> data.entryDenyMessageInput = value, data -> data.entryDenyMessageInput).add()
                 .append(new KeyedCodec<>("@ExitDenyMessageInput", Codec.STRING), (data, value) -> data.exitDenyMessageInput = value, data -> data.exitDenyMessageInput).add()
+                .append(new KeyedCodec<>("@WeatherLockInput", Codec.STRING), (data, value) -> data.weatherLockInput = value, data -> data.weatherLockInput).add()
+                .append(new KeyedCodec<>("@TimeLockInput", Codec.STRING), (data, value) -> data.timeLockInput = value, data -> data.timeLockInput).add()
+                .append(new KeyedCodec<>("@CommandBlacklistInput", Codec.STRING), (data, value) -> data.commandBlacklistInput = value, data -> data.commandBlacklistInput).add()
                 .build();
 
         String action;
@@ -68,12 +71,16 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
         String farewellMessageInput;
         String entryDenyMessageInput;
         String exitDenyMessageInput;
+        String weatherLockInput;
+        String timeLockInput;
+        String commandBlacklistInput;
     }
 
     private static final String UI_PAGE = "Pages/HyGuardFlagEditor.ui";
     private static final String UI_SECTION_ROW = "Pages/HyGuardFlagSectionRow.ui";
     private static final String UI_FLAG_ROW = "Pages/HyGuardFlagRow.ui";
     private static final String UI_TEXT_ROW = "Pages/HyGuardFlagTextRow.ui";
+    private static final String UI_ACTION_ROW = "Pages/HyGuardFlagActionRow.ui";
     private static final String UI_INFO_ROW = "Pages/HyGuardFlagInfoRow.ui";
     private static final String GROUP_ROOT = "#FlagRowsGroup";
     private static final Set<RegionFlag> TEXT_FLAGS = Set.of(
@@ -81,7 +88,10 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
             RegionFlag.FAREWELL_MESSAGE,
             RegionFlag.ENTRY_DENY_MESSAGE,
             RegionFlag.EXIT_DENY_MESSAGE,
-            RegionFlag.GAME_MODE
+            RegionFlag.GAME_MODE,
+            RegionFlag.WEATHER_LOCK,
+            RegionFlag.TIME_LOCK,
+            RegionFlag.COMMAND_BLACKLIST
     );
 
     private final HyGuardPlugin plugin;
@@ -92,8 +102,11 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
     private String farewellMessageInput = "";
     private String entryDenyMessageInput = "";
     private String exitDenyMessageInput = "";
+    private String weatherLockInput = "";
+    private String timeLockInput = "";
+    private String commandBlacklistInput = "";
     private String searchInput = "";
-    private String gameModeInput = "adventure";
+    private String gameModeInput = "";
     private FlagCategory selectedCategory = FlagCategory.BLOCKS;
     private String statusMessage = "Choose a category on the left, then adjust rules on the right.";
     private StatusTone statusTone = StatusTone.INFO;
@@ -135,6 +148,15 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
         if (data.exitDenyMessageInput != null) {
             exitDenyMessageInput = data.exitDenyMessageInput;
         }
+        if (data.weatherLockInput != null) {
+            weatherLockInput = data.weatherLockInput;
+        }
+        if (data.timeLockInput != null) {
+            timeLockInput = data.timeLockInput;
+        }
+        if (data.commandBlacklistInput != null) {
+            commandBlacklistInput = data.commandBlacklistInput;
+        }
         if (data.action == null) {
             return;
         }
@@ -163,6 +185,10 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
             case "Category:SPECIAL" -> selectCategory(FlagCategory.SPECIAL);
             case "GameMode:adventure" -> applyGameMode(region, "adventure");
             case "GameMode:creative" -> applyGameMode(region, "creative");
+            case "ManageEntryBlacklist" -> {
+                plugin.openEntryBlacklistManager(store, entityRef, playerRef, worldName, regionName);
+                return;
+            }
             default -> {
                 if (data.action.startsWith("SetFlag|")) {
                     applyModeFlag(region, data.action);
@@ -255,6 +281,24 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlagValue);
             setStatus(StatusTone.ERROR, "Game mode must be Adventure or Creative.");
             return;
+        }
+        if (flag == RegionFlag.WEATHER_LOCK && plugin.parseConfiguredWeatherLock(textValue) == null) {
+            plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlagValue);
+            setStatus(StatusTone.ERROR, "Weather lock must be a weather index or one of: clear, rain, storm.");
+            return;
+        }
+        if (flag == RegionFlag.TIME_LOCK && plugin.parseConfiguredTimeLock(textValue) == null) {
+            plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlagValue);
+            setStatus(StatusTone.ERROR, "Time lock must be written as HH or HH:MM.");
+            return;
+        }
+        if (flag == RegionFlag.COMMAND_BLACKLIST) {
+            textValue = plugin.sanitizeCommandBlacklist(textValue);
+            if (textValue.isBlank()) {
+                plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlagValue);
+                setStatus(StatusTone.ERROR, "Command blacklist must contain at least one command pattern.");
+                return;
+            }
         }
 
         setTextInput(flag, textValue);
@@ -375,7 +419,9 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
 
         index = appendSectionHeader(cmd, index, selectedCategory.title() + " Rules");
         for (RegionFlag flag : visibleFlags) {
-            if (TEXT_FLAGS.contains(flag)) {
+            if (flag == RegionFlag.ENTRY_BLACKLIST) {
+                appendEntryBlacklistRow(cmd, evt, index++, region);
+            } else if (TEXT_FLAGS.contains(flag)) {
                 appendTextRow(cmd, evt, index++, region, flag);
             } else {
                 appendModeRow(cmd, evt, index++, region, flag);
@@ -465,8 +511,48 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
         cmd.set(rowId + " #CurrentValue.Text", isGameMode ? "Current enforced mode: " + currentValue : "Current value: " + currentValue);
     }
 
+    private void appendEntryBlacklistRow(UICommandBuilder cmd,
+                                         UIEventBuilder evt,
+                                         int index,
+                                         Region region) {
+        cmd.append(GROUP_ROOT, UI_ACTION_ROW);
+        String rowId = GROUP_ROOT + "[" + index + "]";
+        boolean editable = plugin.canManageRegion(playerRef, region);
+        List<HyGuardPlugin.PlayerIdentity> blacklist = plugin.getEntryBlacklist(region);
+        String preview = blacklist.stream()
+                .limit(3)
+                .map(HyGuardPlugin.PlayerIdentity::username)
+                .reduce((left, right) -> left + ", " + right)
+                .orElse("No players are currently blocked from entering this region.");
+        if (blacklist.size() > 3) {
+            preview += " +" + (blacklist.size() - 3) + " more";
+        }
+
+        cmd.set(rowId + " #FlagName.Text", RegionUiText.displayFlag(RegionFlag.ENTRY_BLACKLIST));
+        cmd.set(rowId + " #FlagDescription.Text", RegionUiText.flagDescription(RegionFlag.ENTRY_BLACKLIST));
+        cmd.set(rowId + " #SummaryText.Text", preview);
+        cmd.set(rowId + " #CurrentValue.Text", blacklist.isEmpty()
+                ? "Current value: empty blacklist"
+                : "Current value: " + blacklist.size() + " blocked player(s)");
+        cmd.set(rowId + " #ActionButton.Visible", editable);
+        cmd.set(rowId + " #ActionButtonDisabled.Visible", !editable);
+        cmd.set(rowId + " #ClearBtn.Visible", editable && !blacklist.isEmpty());
+        cmd.set(rowId + " #ClearBtnDisabled.Visible", !editable);
+        cmd.set(rowId + " #ReadOnlyHint.Visible", !editable);
+
+        if (editable) {
+            bindClick(evt, rowId + " #ActionButton", "ManageEntryBlacklist");
+            bindClick(evt, rowId + " #ClearBtn", "ClearFlag|ENTRY_BLACKLIST");
+        }
+    }
+
     private void syncTextInputs(Region region) {
         for (RegionFlag flag : TEXT_FLAGS) {
+            if (flag == RegionFlag.GAME_MODE) {
+                RegionFlagValue value = region.getFlags().get(flag);
+                setTextInput(flag, value == null || value.getTextValue() == null ? "" : value.getTextValue());
+                continue;
+            }
             String current = getTextInput(flag);
             if (current != null && !current.isBlank()) {
                 continue;
@@ -514,8 +600,7 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
                     RegionFlag.KNOCKBACK,
                     RegionFlag.PLAYER_HUNGER,
                     RegionFlag.PLAYER_ITEM_DROP,
-                    RegionFlag.PLAYER_ITEM_PICKUP,
-                    RegionFlag.INTERACT_INVENTORY
+                    RegionFlag.PLAYER_ITEM_PICKUP
             );
             case MOBS -> List.of(
                     RegionFlag.MOB_DAMAGE_PLAYERS,
@@ -527,13 +612,12 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
             case ENVIRONMENT -> List.of(
                     RegionFlag.FIRE_SPREAD,
                     RegionFlag.EXPLOSION,
-                    RegionFlag.EXPLOSION_BLOCK_DAMAGE,
                     RegionFlag.LIQUID_FLOW
             );
             case ENTRY_EXIT -> List.of(
                     RegionFlag.ENTRY,
                     RegionFlag.EXIT,
-                    RegionFlag.ENTRY_PLAYERS,
+                    RegionFlag.ENTRY_BLACKLIST,
                     RegionFlag.GREET_MESSAGE,
                     RegionFlag.FAREWELL_MESSAGE,
                     RegionFlag.ENTRY_DENY_MESSAGE,
@@ -544,6 +628,7 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
                     RegionFlag.GAME_MODE,
                     RegionFlag.WEATHER_LOCK,
                     RegionFlag.TIME_LOCK,
+                        RegionFlag.COMMAND_BLACKLIST,
                     RegionFlag.FLY,
                     RegionFlag.SPAWN_LOCATION
             );
@@ -557,6 +642,9 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
             case ENTRY_DENY_MESSAGE -> entryDenyMessageInput;
             case EXIT_DENY_MESSAGE -> exitDenyMessageInput;
             case GAME_MODE -> gameModeInput;
+            case WEATHER_LOCK -> weatherLockInput;
+            case TIME_LOCK -> timeLockInput;
+            case COMMAND_BLACKLIST -> commandBlacklistInput;
             default -> "";
         };
     }
@@ -569,6 +657,9 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
             case ENTRY_DENY_MESSAGE -> entryDenyMessageInput = normalizedValue;
             case EXIT_DENY_MESSAGE -> exitDenyMessageInput = normalizedValue;
             case GAME_MODE -> gameModeInput = normalizedValue;
+            case WEATHER_LOCK -> weatherLockInput = normalizedValue;
+            case TIME_LOCK -> timeLockInput = normalizedValue;
+            case COMMAND_BLACKLIST -> commandBlacklistInput = normalizedValue;
             default -> {
             }
         }
@@ -580,6 +671,9 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
             case FAREWELL_MESSAGE -> "@FarewellMessageInput";
             case ENTRY_DENY_MESSAGE -> "@EntryDenyMessageInput";
             case EXIT_DENY_MESSAGE -> "@ExitDenyMessageInput";
+            case WEATHER_LOCK -> "@WeatherLockInput";
+            case TIME_LOCK -> "@TimeLockInput";
+            case COMMAND_BLACKLIST -> "@CommandBlacklistInput";
             default -> "@Unused";
         };
     }

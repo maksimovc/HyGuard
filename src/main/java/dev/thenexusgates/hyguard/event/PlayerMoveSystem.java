@@ -1,9 +1,14 @@
 package dev.thenexusgates.hyguard.event;
 
+import com.hypixel.hytale.component.ArchetypeChunk;
+import com.hypixel.hytale.component.CommandBuffer;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.component.query.Query;
+import com.hypixel.hytale.component.system.tick.EntityTickingSystem;
+import com.hypixel.hytale.server.core.entity.entities.Player;
+import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
-import com.hypixel.hytale.server.core.universe.Universe;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import dev.thenexusgates.hyguard.HyGuardPlugin;
@@ -20,43 +25,33 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 
-public final class PlayerMoveSystem {
+import javax.annotation.Nonnull;
 
-    private static final long POLL_INTERVAL_MS = 250L;
-    private static final long PLAYER_STATE_STALE_AFTER_MS = 5000L;
+public final class PlayerMoveSystem extends EntityTickingSystem<EntityStore> {
+
+    private static final Query<EntityStore> QUERY = Query.and(
+            Player.getComponentType(),
+            TransformComponent.getComponentType()
+    );
 
     private final HyGuardPlugin plugin;
-    private final ScheduledExecutorService scheduler;
     private final EnterExitMessageRenderer messageRenderer;
     private final ConcurrentHashMap<String, PlayerState> states = new ConcurrentHashMap<>();
 
-    private volatile ScheduledFuture<?> task;
-
     public PlayerMoveSystem(HyGuardPlugin plugin,
-                            ScheduledExecutorService scheduler,
                             EnterExitMessageRenderer messageRenderer) {
         this.plugin = plugin;
-        this.scheduler = scheduler;
         this.messageRenderer = messageRenderer;
     }
 
-    public synchronized void start() {
-        if (scheduler == null || (task != null && !task.isCancelled())) {
-            return;
-        }
-        task = scheduler.scheduleAtFixedRate(this::tickSafely, POLL_INTERVAL_MS, POLL_INTERVAL_MS, TimeUnit.MILLISECONDS);
+    @Nonnull
+    @Override
+    public Query<EntityStore> getQuery() {
+        return QUERY;
     }
 
-    public synchronized void stop() {
-        if (task != null) {
-            task.cancel(false);
-            task = null;
-        }
+    public void stop() {
         states.clear();
     }
 
@@ -66,55 +61,36 @@ public final class PlayerMoveSystem {
         }
     }
 
-    private void tickSafely() {
-        try {
-            tick();
-        } catch (Throwable throwable) {
-            plugin.getLogger().at(Level.WARNING).withCause(throwable).log("[HyGuard] PlayerMoveSystem tick failed.");
-        }
-    }
-
-    private void tick() {
-        Universe universe = Universe.get();
-        if (universe == null) {
+    @Override
+    public void tick(float dt,
+                     int index,
+                     @Nonnull ArchetypeChunk<EntityStore> archetypeChunk,
+                     @Nonnull Store<EntityStore> store,
+                     @Nonnull CommandBuffer<EntityStore> commandBuffer) {
+        Ref<EntityStore> entityRef = archetypeChunk.getReferenceTo(index);
+        PlayerRef playerRef = store.getComponent(entityRef, PlayerRef.getComponentType());
+        TransformComponent transform = archetypeChunk.getComponent(index, TransformComponent.getComponentType());
+        EntityStore entityStore = store.getExternalData();
+        World world = entityStore == null ? null : entityStore.getWorld();
+        if (playerRef == null || playerRef.getUuid() == null || transform == null || transform.getPosition() == null || world == null) {
             return;
         }
 
         long now = System.currentTimeMillis();
-        for (PlayerRef playerRef : universe.getPlayers()) {
-            if (playerRef == null || playerRef.getUuid() == null) {
-                continue;
-            }
-            String playerUuid = playerRef.getUuid().toString();
-            touchPlayer(playerUuid, now);
-            if (playerRef.getWorldUuid() == null || playerRef.getTransform() == null || playerRef.getTransform().getPosition() == null) {
-                continue;
-            }
-            processPlayer(universe, playerRef, now);
-        }
-        states.entrySet().removeIf(entry -> isStale(entry.getValue(), now));
+        processPlayer(store, commandBuffer, entityRef, world, playerRef, transform, now);
     }
 
-    private void touchPlayer(String playerUuid, long now) {
-        states.computeIfPresent(playerUuid, (ignored, state) -> state.withLastSeenAt(now));
-    }
-
-    private boolean isStale(PlayerState state, long now) {
-        return state == null || now - state.lastSeenAt() > PLAYER_STATE_STALE_AFTER_MS;
-    }
-
-    private void processPlayer(Universe universe, PlayerRef playerRef, long now) {
-        World world = universe.getWorld(playerRef.getWorldUuid());
-        if (world == null) {
-            return;
-        }
-
-        plugin.rememberPlayer(playerRef);
-
+    private void processPlayer(Store<EntityStore> store,
+                               CommandBuffer<EntityStore> commandBuffer,
+                               Ref<EntityStore> entityRef,
+                               World world,
+                               PlayerRef playerRef,
+                               TransformComponent transform,
+                               long now) {
         String worldId = world.getName();
         String playerUuid = playerRef.getUuid().toString();
-        BlockPos currentPosition = plugin.resolvePlayerRegionPosition(playerRef);
-        List<BlockPos> currentPositions = plugin.resolvePlayerRegionPositions(playerRef);
+        BlockPos currentPosition = resolvePlayerRegionPosition(transform);
+        List<BlockPos> currentPositions = resolvePlayerRegionPositions(transform);
         if (currentPosition == null || currentPositions.isEmpty()) {
             return;
         }
@@ -124,16 +100,17 @@ public final class PlayerMoveSystem {
 
         PlayerState previousState = states.get(playerUuid);
         if (previousState == null) {
-            applyRegionState(playerRef, worldId, currentPosition);
-            currentRegions.forEach(region -> messageRenderer.sendGreeting(playerRef, region));
+            plugin.rememberPlayer(playerRef);
+            applyRegionState(store, entityRef, playerRef, worldId, currentPosition);
+            messageRenderer.sendGreeting(playerRef, currentRegions);
             states.put(playerUuid, PlayerState.create(worldId, currentPosition, currentRegionIds, now));
             return;
         }
 
         if (!previousState.worldId().equalsIgnoreCase(worldId)) {
-            resolveRegions(previousState.announcedRegionIds()).forEach(region -> messageRenderer.sendFarewell(playerRef, region));
-            applyRegionState(playerRef, worldId, currentPosition);
-            currentRegions.forEach(region -> messageRenderer.sendGreeting(playerRef, region));
+            messageRenderer.sendFarewell(playerRef, resolveRegions(previousState.announcedRegionIds()));
+            applyRegionState(store, entityRef, playerRef, worldId, currentPosition);
+            messageRenderer.sendGreeting(playerRef, currentRegions);
             states.put(playerUuid, PlayerState.create(worldId, currentPosition, currentRegionIds, now));
             return;
         }
@@ -153,7 +130,7 @@ public final class PlayerMoveSystem {
         if (positionChanged && !exitedRegions.isEmpty()) {
             ProtectionResult exitResult = plugin.evaluate(playerRef, previousState.worldId(), previousState.position(), ProtectionAction.EXIT);
             if (!exitResult.allowed()) {
-                if (teleportBack(playerRef, previousState.safePositionOrFallback())) {
+                if (teleportBack(commandBuffer, store, entityRef, previousState.safePositionOrFallback())) {
                     messageRenderer.sendExitDenied(playerRef, exitResult.region());
                 }
                 return;
@@ -164,21 +141,21 @@ public final class PlayerMoveSystem {
         if (positionChanged && !enteredRegions.isEmpty()) {
             Region restrictedEntryRegion = resolveRestrictedEntryRegion(playerRef, enteredRegions);
             if (restrictedEntryRegion != null) {
-                if (teleportBack(playerRef, previousState.safePositionOrFallback())) {
+                if (teleportBack(commandBuffer, store, entityRef, previousState.safePositionOrFallback())) {
                     messageRenderer.sendEntryDenied(playerRef, restrictedEntryRegion);
                 }
                 return;
             }
             ProtectionResult entryResult = plugin.evaluate(playerRef, worldId, currentPosition, ProtectionAction.ENTRY);
             if (!entryResult.allowed()) {
-                if (teleportBack(playerRef, previousState.safePositionOrFallback())) {
+                if (teleportBack(commandBuffer, store, entityRef, previousState.safePositionOrFallback())) {
                     messageRenderer.sendEntryDenied(playerRef, entryResult.region());
                 }
                 return;
             }
         }
 
-        applyRegionState(playerRef, worldId, currentPosition);
+        applyRegionState(store, entityRef, playerRef, worldId, currentPosition);
 
         PlayerState nextState = previousState.withObservation(currentPosition, currentRegionIds, now);
         nextState = syncAnnouncements(playerRef, worldId, currentRegions, currentRegionIds, nextState);
@@ -195,8 +172,8 @@ public final class PlayerMoveSystem {
         }
 
         if (!state.worldId().equalsIgnoreCase(worldId)) {
-            resolveRegions(state.announcedRegionIds()).forEach(region -> messageRenderer.sendFarewell(playerRef, region));
-            currentRegions.forEach(region -> messageRenderer.sendGreeting(playerRef, region));
+            messageRenderer.sendFarewell(playerRef, resolveRegions(state.announcedRegionIds()));
+            messageRenderer.sendGreeting(playerRef, currentRegions);
             return state.withAnnouncements(currentRegionIds);
         }
 
@@ -207,15 +184,22 @@ public final class PlayerMoveSystem {
         List<Region> announcedRegions = resolveRegions(state.announcedRegionIds());
         List<Region> exitedRegions = resolveExitedRegions(announcedRegions, currentRegionIds);
         List<Region> enteredRegions = resolveEnteredRegions(currentRegions, state.announcedRegionIds());
-        exitedRegions.forEach(region -> messageRenderer.sendFarewell(playerRef, region));
-        enteredRegions.forEach(region -> messageRenderer.sendGreeting(playerRef, region));
+        if (!exitedRegions.isEmpty()) {
+            messageRenderer.sendFarewell(playerRef, exitedRegions);
+        }
+        if (!enteredRegions.isEmpty()) {
+            messageRenderer.sendGreeting(playerRef, currentRegions);
+        }
         return state.withAnnouncements(currentRegionIds);
     }
 
-    private void applyRegionState(PlayerRef playerRef, String worldId, BlockPos currentPosition) {
-        Ref<EntityStore> entityRef = playerRef.getReference();
+    private void applyRegionState(Store<EntityStore> store,
+                                  Ref<EntityStore> entityRef,
+                                  PlayerRef playerRef,
+                                  String worldId,
+                                  BlockPos currentPosition) {
         if (entityRef != null && entityRef.isValid()) {
-            plugin.applyRegionState(entityRef.getStore(), entityRef, playerRef, worldId, currentPosition);
+            plugin.applyRegionState(store, entityRef, playerRef, worldId, currentPosition);
         }
     }
 
@@ -235,20 +219,49 @@ public final class PlayerMoveSystem {
             return null;
         }
         for (Region region : enteredRegions) {
-            if (!plugin.isFlagAllowed(playerRef, region, RegionFlag.ENTRY_PLAYERS, RegionFlagValue.Mode.ALLOW)) {
+            if (plugin.isEntryBlacklisted(region, playerRef)) {
                 return region;
             }
         }
         return null;
     }
 
-    private boolean teleportBack(PlayerRef playerRef, BlockPos position) {
-        Ref<EntityStore> entityRef = playerRef.getReference();
+    private boolean teleportBack(CommandBuffer<EntityStore> commandBuffer,
+                                 Store<EntityStore> store,
+                                 Ref<EntityStore> entityRef,
+                                 BlockPos position) {
         if (entityRef == null || !entityRef.isValid()) {
             return false;
         }
-        Store<EntityStore> store = entityRef.getStore();
-        return plugin.teleportToPosition(store, entityRef, position);
+        return plugin.teleportToPosition(commandBuffer, store, entityRef, position);
+    }
+
+    private BlockPos resolvePlayerRegionPosition(TransformComponent transform) {
+        if (transform == null || transform.getPosition() == null) {
+            return null;
+        }
+        return new BlockPos(
+                (int) Math.floor(transform.getPosition().getX()),
+                (int) Math.floor(transform.getPosition().getY() + 0.25D),
+                (int) Math.floor(transform.getPosition().getZ())
+        );
+    }
+
+    private List<BlockPos> resolvePlayerRegionPositions(TransformComponent transform) {
+        if (transform == null || transform.getPosition() == null) {
+            return List.of();
+        }
+
+        int blockX = (int) Math.floor(transform.getPosition().getX());
+        int minBlockY = (int) Math.floor(transform.getPosition().getY());
+        int maxBlockY = Math.max(minBlockY, (int) Math.floor(transform.getPosition().getY() + 1.8D));
+        int blockZ = (int) Math.floor(transform.getPosition().getZ());
+
+        ArrayList<BlockPos> positions = new ArrayList<>(maxBlockY - minBlockY + 1);
+        for (int blockY = minBlockY; blockY <= maxBlockY; blockY++) {
+            positions.add(new BlockPos(blockX, blockY, blockZ));
+        }
+        return List.copyOf(positions);
     }
 
     private List<Region> resolveEnteredRegions(List<Region> currentRegions, List<String> previousRegionIds) {
@@ -294,10 +307,6 @@ public final class PlayerMoveSystem {
 
         private PlayerState withAnnouncements(List<String> updatedAnnouncedRegionIds) {
             return new PlayerState(worldId, position, safePosition, regionIds, List.copyOf(updatedAnnouncedRegionIds), lastSeenAt);
-        }
-
-        private PlayerState withLastSeenAt(long updatedLastSeenAt) {
-            return new PlayerState(worldId, position, safePosition, regionIds, announcedRegionIds, updatedLastSeenAt);
         }
 
         private BlockPos safePositionOrFallback() {

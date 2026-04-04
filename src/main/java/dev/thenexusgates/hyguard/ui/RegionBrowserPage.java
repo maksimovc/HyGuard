@@ -37,6 +37,10 @@ public final class RegionBrowserPage extends InteractiveCustomUIPage<RegionBrows
     private final String worldName;
     private final String parentRegionName;
 
+    public RegionBrowserPage(PlayerRef playerRef, HyGuardPlugin plugin) {
+        this(playerRef, plugin, null, null);
+    }
+
     public RegionBrowserPage(PlayerRef playerRef, HyGuardPlugin plugin, String worldName) {
         this(playerRef, plugin, worldName, null);
     }
@@ -66,22 +70,28 @@ public final class RegionBrowserPage extends InteractiveCustomUIPage<RegionBrows
 
         switch (data.action) {
             case "Back" -> {
-                if (store == null || store.getExternalData() == null || store.getExternalData().getWorld() == null) {
+                if (store == null) {
                     close();
                     return;
                 }
-                plugin.openRegionBrowser(store, entityRef, playerRef, store.getExternalData().getWorld());
+                plugin.openRegionBrowser(store, entityRef, playerRef);
             }
             case "Close" -> close();
             default -> {
                 if (data.action.startsWith("Children:")) {
-                    plugin.openChildRegionBrowser(store, entityRef, playerRef, worldName, data.action.substring("Children:".length()));
+                    Region region = plugin.findRegionById(data.action.substring("Children:".length()));
+                    if (region != null) {
+                        plugin.openChildRegionBrowser(store, entityRef, playerRef, region.getWorldId(), region.getName());
+                    }
                     return;
                 }
                 if (!data.action.startsWith("Region:")) {
                     return;
                 }
-                plugin.openRegionDetail(store, entityRef, playerRef, worldName, data.action.substring("Region:".length()));
+                Region region = plugin.findRegionById(data.action.substring("Region:".length()));
+                if (region != null) {
+                    plugin.openRegionDetail(store, entityRef, playerRef, region.getWorldId(), region.getName());
+                }
             }
         }
     }
@@ -99,16 +109,20 @@ public final class RegionBrowserPage extends InteractiveCustomUIPage<RegionBrows
                         UIEventBuilder evt) {
         cmd.append(UI_PAGE);
         boolean childBrowserMode = parentRegionName != null && !parentRegionName.isBlank();
-        cmd.set("#WorldValue.Text", worldName);
+        boolean allWorldsMode = !childBrowserMode && (worldName == null || worldName.isBlank());
+        List<Region> allRegions = childBrowserMode
+            ? plugin.getWorldRegions(worldName)
+            : (allWorldsMode ? plugin.getAllRegions() : plugin.getWorldRegions(worldName));
+        List<Region> regions = childBrowserMode
+            ? resolveChildRegions()
+            : (allWorldsMode ? plugin.getAllDisplayRootRegions() : plugin.getDisplayRootRegions(worldName));
+
+        cmd.set("#WorldValue.Text", describeWorldLabel(childBrowserMode, allWorldsMode));
         cmd.set("#BackButton.Visible", childBrowserMode);
 
-        List<Region> allRegions = plugin.getWorldRegions(worldName);
-        List<Region> regions = childBrowserMode ? resolveChildRegions() : plugin.getDisplayRootRegions(worldName);
-        cmd.set("#PageTitle.Text", describePageTitle(childBrowserMode, allRegions.isEmpty(), regions));
+        cmd.set("#PageTitle.Text", describePageTitle(childBrowserMode, allWorldsMode, allRegions.isEmpty(), regions));
         cmd.set("#CountValue.Text", String.valueOf(childBrowserMode ? regions.size() : allRegions.size()));
-        cmd.set("#HelpText.Text", childBrowserMode
-                ? "Child plots are shown here separately so the main browser stays focused on parent regions."
-                : "Use /hg create <name> after making a selection to add a new region.");
+        cmd.set("#HelpText.Text", describeHelpText(childBrowserMode, allWorldsMode));
 
         bind(evt, "#BackButton", "Back");
         bind(evt, "#CloseIconButton", "Close");
@@ -128,8 +142,18 @@ public final class RegionBrowserPage extends InteractiveCustomUIPage<RegionBrows
 
         int index = 0;
         for (Region region : regions) {
-            addRegionRow(cmd, evt, index++, region, childBrowserMode);
+            addRegionRow(cmd, evt, index++, region, childBrowserMode, allWorldsMode);
         }
+    }
+
+    private String describeWorldLabel(boolean childBrowserMode, boolean allWorldsMode) {
+        if (childBrowserMode) {
+            return worldName;
+        }
+        if (allWorldsMode) {
+            return "All worlds (" + plugin.getKnownWorldIds().size() + ")";
+        }
+        return worldName;
     }
 
     private List<Region> resolveChildRegions() {
@@ -137,29 +161,50 @@ public final class RegionBrowserPage extends InteractiveCustomUIPage<RegionBrows
         return parentRegion == null ? List.of() : plugin.getDisplayChildRegions(parentRegion);
     }
 
-    private String describePageTitle(boolean childBrowserMode, boolean noWorldRegions, List<Region> regions) {
+    private String describePageTitle(boolean childBrowserMode,
+                                     boolean allWorldsMode,
+                                     boolean noWorldRegions,
+                                     List<Region> regions) {
         if (childBrowserMode) {
             return regions.isEmpty()
                     ? "No internal regions exist for " + parentRegionName + "."
                     : "Internal regions of " + parentRegionName + ".";
+        }
+        if (allWorldsMode) {
+            return noWorldRegions
+                    ? "No regions are defined in any loaded world yet."
+                    : "Browse parent regions across every loaded world.";
         }
         return noWorldRegions
                 ? "No regions are defined in this world yet."
                 : "Browse parent regions. Open child plots only when you need to manage them separately.";
     }
 
+    private String describeHelpText(boolean childBrowserMode, boolean allWorldsMode) {
+        if (childBrowserMode) {
+            return "Child plots are shown here separately so the main browser stays focused on parent regions.";
+        }
+        if (allWorldsMode) {
+            return "This browser now merges saved regions from every world. Open any card to manage it in its own world context.";
+        }
+        return "Use /hg create <name> after making a selection to add a new region.";
+    }
+
     private void addRegionRow(UICommandBuilder cmd,
                               UIEventBuilder evt,
                               int index,
                               Region region,
-                              boolean childBrowserMode) {
+                              boolean childBrowserMode,
+                              boolean allWorldsMode) {
         String title = formatRegionTitle(region, childBrowserMode);
-        String subtitle = "Owner: " + region.getOwnerName();
-        String detail = formatRegionDetail(region);
+        String subtitle = allWorldsMode
+                ? "World: " + region.getWorldId() + " | Owner: " + region.getOwnerName()
+                : "Owner: " + region.getOwnerName();
+        String detail = formatRegionDetail(region, allWorldsMode);
         List<Region> childRegions = plugin.getDisplayChildRegions(region);
-        String childAction = childRegions.isEmpty() ? null : "Children:" + region.getName();
+        String childAction = childRegions.isEmpty() ? null : "Children:" + region.getId();
         String childLabel = childRegions.isEmpty() ? null : "Child plots (" + childRegions.size() + ")";
-        addRow(cmd, evt, index, title, subtitle, detail, "Region:" + region.getName(), childAction, childLabel);
+        addRow(cmd, evt, index, title, subtitle, detail, "Region:" + region.getId(), childAction, childLabel);
     }
 
     private String formatRegionTitle(Region region, boolean childBrowserMode) {
@@ -169,7 +214,7 @@ public final class RegionBrowserPage extends InteractiveCustomUIPage<RegionBrows
         return region.getName();
     }
 
-    private String formatRegionDetail(Region region) {
+    private String formatRegionDetail(Region region, boolean allWorldsMode) {
         StringBuilder detail = new StringBuilder();
         if (region.isGlobal()) {
             detail.append("Global region");
@@ -178,6 +223,10 @@ public final class RegionBrowserPage extends InteractiveCustomUIPage<RegionBrows
         } else {
             detail.append("Child of ")
                     .append(plugin.getRegionNameById(region.getParentRegionId(), worldName));
+        }
+
+        if (allWorldsMode) {
+            detail.append(" | World: ").append(region.getWorldId());
         }
 
         detail.append(" | Priority: ")

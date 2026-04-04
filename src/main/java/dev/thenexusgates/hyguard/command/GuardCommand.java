@@ -264,7 +264,7 @@ public final class GuardCommand extends AbstractPlayerCommand {
         List<String> lines = new ArrayList<>(RegionFlag.visibleValues().size());
         for (RegionFlag flag : RegionFlag.visibleValues()) {
             RegionFlagValue flagValue = region.getFlags().get(flag);
-            String value = formatFlagValue(flagValue);
+            String value = formatFlagValue(flag, flagValue);
             lines.add(plugin.message(playerRef, plugin.getConfigSnapshot().messages.flagListEntry, Map.of(
                     "flag", flag.name(),
                     "value", value
@@ -283,19 +283,26 @@ public final class GuardCommand extends AbstractPlayerCommand {
         if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.listPermission, false)) {
             return;
         }
-        List<Region> regions = new ArrayList<>(plugin.getWorldRegions(world.getName()));
+        List<Region> regions = new ArrayList<>(plugin.getAllRegions());
         if (regions.isEmpty()) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionListEmpty);
             return;
         }
 
         plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionList, Map.of(
-                "world", world.getName(),
+                "world", plugin.getKnownWorldIds().size() == 1 ? world.getName() : "all worlds",
                 "regions", Integer.toString(regions.size())
         ));
 
-        for (Region rootRegion : plugin.getDisplayRootRegions(world.getName())) {
-            sendRegionTree(playerRef, rootRegion, 0);
+        for (String worldId : plugin.getKnownWorldIds()) {
+            List<Region> rootRegions = plugin.getDisplayRootRegions(worldId);
+            if (rootRegions.isEmpty()) {
+                continue;
+            }
+            plugin.sendRaw(playerRef, "World: " + worldId + " [regions: " + plugin.getWorldRegions(worldId).size() + "]");
+            for (Region rootRegion : rootRegions) {
+                sendRegionTree(playerRef, rootRegion, 0);
+            }
         }
     }
 
@@ -684,6 +691,13 @@ public final class GuardCommand extends AbstractPlayerCommand {
             return;
         }
 
+        if (flag == RegionFlag.ENTRY_BLACKLIST && !("clear".equalsIgnoreCase(args[3])
+                || "reset".equalsIgnoreCase(args[3])
+                || "--reset".equalsIgnoreCase(args[3]))) {
+            plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlagValue);
+            return;
+        }
+
         if ("clear".equalsIgnoreCase(args[3]) || "reset".equalsIgnoreCase(args[3]) || "--reset".equalsIgnoreCase(args[3])) {
             region.removeFlag(flag);
             plugin.saveRegion(region);
@@ -708,6 +722,21 @@ public final class GuardCommand extends AbstractPlayerCommand {
         if (flag == RegionFlag.GAME_MODE && (textValue == null || plugin.parseConfiguredGameMode(textValue) == null)) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlagValue);
             return;
+        }
+        if (flag == RegionFlag.WEATHER_LOCK && (textValue == null || plugin.parseConfiguredWeatherLock(textValue) == null)) {
+            plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlagValue);
+            return;
+        }
+        if (flag == RegionFlag.TIME_LOCK && (textValue == null || plugin.parseConfiguredTimeLock(textValue) == null)) {
+            plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlagValue);
+            return;
+        }
+        if (flag == RegionFlag.COMMAND_BLACKLIST) {
+            textValue = plugin.sanitizeCommandBlacklist(textValue);
+            if (textValue == null || textValue.isBlank()) {
+                plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlagValue);
+                return;
+            }
         }
         if (flag == RegionFlag.FLY) {
             textValue = null;
@@ -790,7 +819,7 @@ public final class GuardCommand extends AbstractPlayerCommand {
             plugin.openRegionDetail(store, entityRef, playerRef, world.getName(), region.getName());
             return;
         }
-        plugin.openRegionBrowser(store, entityRef, playerRef, world);
+        plugin.openRegionBrowser(store, entityRef, playerRef);
     }
 
     private void handleBackup(PlayerRef playerRef) {
@@ -1184,15 +1213,23 @@ public final class GuardCommand extends AbstractPlayerCommand {
                 .sorted(Map.Entry.comparingByKey())
                 .forEach(entry -> {
                     if (entry.getValue() != null && entry.getValue().getMode() != RegionFlagValue.Mode.INHERIT) {
-                        entries.add(entry.getKey().name() + "=" + formatFlagValue(entry.getValue()));
+                        entries.add(entry.getKey().name() + "=" + formatFlagValue(entry.getKey(), entry.getValue()));
                     }
                 });
         return entries.isEmpty() ? "none" : String.join(", ", entries);
     }
 
-    private String formatFlagValue(RegionFlagValue flagValue) {
+    private String formatFlagValue(RegionFlag flag, RegionFlagValue flagValue) {
         if (flagValue == null) {
             return RegionFlagValue.Mode.INHERIT.name();
+        }
+        if (flag == RegionFlag.ENTRY_BLACKLIST) {
+            int count = plugin.countStoredPlayerIdentities(flagValue.getTextValue());
+            return count <= 0 ? RegionFlagValue.Mode.INHERIT.name() : flagValue.getMode().name() + " (" + count + " players)";
+        }
+        if (flag == RegionFlag.COMMAND_BLACKLIST) {
+            int count = plugin.countConfiguredCommandBlacklist(flagValue.getTextValue());
+            return count <= 0 ? RegionFlagValue.Mode.INHERIT.name() : flagValue.getMode().name() + " (" + count + " commands)";
         }
         String base = flagValue.getMode().name();
         return flagValue.getTextValue() == null || flagValue.getTextValue().isBlank()

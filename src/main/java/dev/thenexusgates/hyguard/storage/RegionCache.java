@@ -92,8 +92,8 @@ public final class RegionCache {
         }
 
         regions.sort(Comparator
-                .comparingInt(Region::getPriority).reversed()
-                .thenComparingLong(Region::getVolume)
+            .comparingLong(Region::getVolume)
+            .thenComparing(Comparator.comparingInt(Region::getPriority).reversed())
                 .thenComparing(Region::getName, String.CASE_INSENSITIVE_ORDER));
         return regions;
     }

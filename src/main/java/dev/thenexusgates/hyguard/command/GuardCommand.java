@@ -64,11 +64,13 @@ public final class GuardCommand extends AbstractPlayerCommand {
 
     private final HyGuardPlugin plugin;
     private final FlagArg confirmArg;
+    private final FlagArg serverArg;
 
     public GuardCommand(HyGuardPlugin plugin) {
         super("hg", "HyGuard command");
         this.plugin = plugin;
         this.confirmArg = withFlagArg("confirm", "Confirm destructive actions");
+        this.serverArg = withFlagArg("server", "Create a server-owned region");
         requirePermission(plugin.getConfigSnapshot().general.usePermission);
         setAllowsExtraArguments(true);
         addAliases("guard");
@@ -98,9 +100,10 @@ public final class GuardCommand extends AbstractPlayerCommand {
 
         String subcommand = args[0].toLowerCase(Locale.ROOT);
         boolean confirmRequested = Boolean.TRUE.equals(confirmArg.get(context));
+        boolean serverRequested = Boolean.TRUE.equals(serverArg.get(context));
         switch (subcommand) {
             case "wand" -> handleWand(store, entityRef, playerRef);
-            case "create" -> handleCreate(playerRef, world, args);
+            case "create" -> handleCreate(playerRef, world, args, serverRequested);
             case "delete" -> handleDelete(playerRef, world, args, confirmRequested);
             case "info" -> handleInfo(playerRef, world, args);
             case "list" -> handleList(playerRef, world);
@@ -118,7 +121,7 @@ public final class GuardCommand extends AbstractPlayerCommand {
             case "gui" -> handleGui(store, entityRef, playerRef, world, args);
             case "backup" -> handleBackup(playerRef);
             case "debug" -> handleDebug(playerRef, world, args);
-            case "bypass" -> handleBypass(playerRef);
+            case "admin-override", "adminoverride", "bypass" -> handleAdminOverride(playerRef);
             case "save" -> handleSave(playerRef);
             case "reload" -> handleReload(playerRef);
             default -> sendHelp(playerRef, new String[] { "help", subcommand });
@@ -135,7 +138,7 @@ public final class GuardCommand extends AbstractPlayerCommand {
         }
     }
 
-    private void handleCreate(PlayerRef playerRef, World world, String[] args) {
+    private void handleCreate(PlayerRef playerRef, World world, String[] args, boolean serverRequested) {
         if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.createPermission, true)) {
             return;
         }
@@ -147,7 +150,9 @@ public final class GuardCommand extends AbstractPlayerCommand {
         if (name == null) {
             return;
         }
-        boolean serverOwned = hasServerFlag(args);
+        boolean explicitServerOwned = serverRequested || hasServerFlag(args);
+        boolean inheritedServerOwned = !explicitServerOwned && plugin.selectionInheritsServerOwnership(playerRef, world.getName());
+        boolean serverOwned = explicitServerOwned || inheritedServerOwned;
         if (GLOBAL_REGION_NAME.equalsIgnoreCase(name)) {
             if (!plugin.hasAdminPermission(playerRef)) {
                 plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
@@ -167,7 +172,7 @@ public final class GuardCommand extends AbstractPlayerCommand {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionAlreadyExists);
             return;
         }
-        if (serverOwned && !plugin.hasAdminPermission(playerRef)) {
+        if (explicitServerOwned && !plugin.hasAdminPermission(playerRef)) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
             return;
         }
@@ -179,21 +184,17 @@ public final class GuardCommand extends AbstractPlayerCommand {
             ));
             return;
         }
-        Region region = serverOwned
+        HyGuardPlugin.RegionCreationResult creationResult = serverOwned
                 ? plugin.createServerRegion(playerRef, world.getName(), name)
                 : plugin.createRegion(playerRef, world.getName(), name);
-        if (region == null) {
-            SelectionSession session = plugin.getSelectionService().get(playerRef.getUuid().toString());
-            if (session != null && session.isComplete() && world.getName().equalsIgnoreCase(session.getWorldId())) {
-                plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionOverlapConflict);
-            } else {
-                plugin.send(playerRef, plugin.getConfigSnapshot().messages.selectionIncomplete);
-            }
+        if (!creationResult.isSuccess()) {
+            sendRegionMutationFailure(playerRef, creationResult.result(), null);
             return;
         }
+        Region region = creationResult.region();
         plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionCreated, Map.of("name", region.getName()));
         plugin.playSuccessSound(playerRef);
-        plugin.getLogger().at(java.util.logging.Level.INFO).log("[HyGuard] region created: world=%s name=%s actor=%s global=false serverOwned=%s", world.getName(), region.getName(), playerRef.getUsername(), serverOwned);
+        plugin.getLogger().at(java.util.logging.Level.INFO).log("[HyGuard] region created: world=%s name=%s actor=%s global=false serverOwned=%s", world.getName(), region.getName(), playerRef.getUsername(), plugin.isServerOwnedRegion(region));
     }
 
     private void handleDelete(PlayerRef playerRef, World world, String[] args, boolean confirmRequested) {
@@ -211,6 +212,10 @@ public final class GuardCommand extends AbstractPlayerCommand {
         }
         if (!plugin.canManageRegion(playerRef, region)) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
+            return;
+        }
+        if (plugin.hasChildRegions(region)) {
+            plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionDeleteHasChildren, Map.of("name", region.getName()));
             return;
         }
         if (!confirmRequested && !hasConfirmFlag(args)) {
@@ -256,8 +261,8 @@ public final class GuardCommand extends AbstractPlayerCommand {
             return;
         }
 
-        List<String> lines = new ArrayList<>(RegionFlag.values().length);
-        for (RegionFlag flag : RegionFlag.values()) {
+        List<String> lines = new ArrayList<>(RegionFlag.visibleValues().size());
+        for (RegionFlag flag : RegionFlag.visibleValues()) {
             RegionFlagValue flagValue = region.getFlags().get(flag);
             String value = formatFlagValue(flagValue);
             lines.add(plugin.message(playerRef, plugin.getConfigSnapshot().messages.flagListEntry, Map.of(
@@ -284,14 +289,46 @@ public final class GuardCommand extends AbstractPlayerCommand {
             return;
         }
 
-        List<String> names = new ArrayList<>(regions.size());
-        for (Region region : regions) {
-            names.add(region.getName());
-        }
         plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionList, Map.of(
                 "world", world.getName(),
-                "regions", String.join(", ", names)
+                "regions", Integer.toString(regions.size())
         ));
+
+        for (Region rootRegion : plugin.getDisplayRootRegions(world.getName())) {
+            sendRegionTree(playerRef, rootRegion, 0);
+        }
+    }
+
+    private void sendRegionTree(PlayerRef playerRef, Region region, int depth) {
+        plugin.sendRaw(playerRef, formatRegionTreeLine(region, depth));
+        for (Region childRegion : plugin.getDisplayChildRegions(region)) {
+            sendRegionTree(playerRef, childRegion, depth + 1);
+        }
+    }
+
+    private String formatRegionTreeLine(Region region, int depth) {
+        String prefix = depth <= 0 ? "- " : "  ".repeat(depth) + "- ";
+        StringBuilder line = new StringBuilder(prefix)
+                .append(region.getName())
+                .append(" [owner: ")
+                .append(region.getOwnerName())
+                .append(", priority: ")
+                .append(region.getPriority());
+
+        if (region.isGlobal()) {
+            line.append(", global");
+        } else if (region.getParentRegionId() != null && !region.getParentRegionId().isBlank()) {
+            line.append(", parent: ")
+                    .append(plugin.getRegionNameById(region.getParentRegionId(), region.getWorldId()));
+        }
+
+        int childCount = plugin.getDisplayChildRegions(region).size();
+        if (childCount > 0) {
+            line.append(", children: ").append(childCount);
+        }
+
+        line.append(']');
+        return line.toString();
     }
 
     private void handleSelect(PlayerRef playerRef, World world, String[] args) {
@@ -324,14 +361,13 @@ public final class GuardCommand extends AbstractPlayerCommand {
             return;
         }
 
-        switch (plugin.redefineRegion(playerRef, world.getName(), region)) {
+        HyGuardPlugin.RegionUpdateResult redefineResult = plugin.redefineRegion(playerRef, world.getName(), region);
+        switch (redefineResult) {
             case SUCCESS -> {
                 plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionRedefined, Map.of("name", region.getName()));
                 plugin.playSuccessSound(playerRef);
             }
-            case WORLD_MISMATCH -> plugin.send(playerRef, plugin.getConfigSnapshot().messages.selectionWorldMismatch);
-            case OVERLAP_CONFLICT -> plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionOverlapConflict);
-            case SELECTION_INCOMPLETE -> plugin.send(playerRef, plugin.getConfigSnapshot().messages.selectionIncomplete);
+            default -> sendRegionMutationFailure(playerRef, redefineResult, region);
         }
     }
 
@@ -643,6 +679,10 @@ public final class GuardCommand extends AbstractPlayerCommand {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlag);
             return;
         }
+        if (!flag.isUserVisible()) {
+            plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlag);
+            return;
+        }
 
         if ("clear".equalsIgnoreCase(args[3]) || "reset".equalsIgnoreCase(args[3]) || "--reset".equalsIgnoreCase(args[3])) {
             region.removeFlag(flag);
@@ -796,11 +836,11 @@ public final class GuardCommand extends AbstractPlayerCommand {
         }
     }
 
-    private void handleBypass(PlayerRef playerRef) {
+    private void handleAdminOverride(PlayerRef playerRef) {
         if (!requirePermission(playerRef, plugin.getConfigSnapshot().general.bypassTogglePermission, true)) {
             return;
         }
-        boolean enabled = plugin.toggleBypass(playerRef);
+        boolean enabled = plugin.toggleAdminOverride(playerRef);
         plugin.send(playerRef, enabled ? plugin.getConfigSnapshot().messages.bypassEnabled : plugin.getConfigSnapshot().messages.bypassDisabled);
         plugin.playSuccessSound(playerRef);
     }
@@ -1198,6 +1238,21 @@ public final class GuardCommand extends AbstractPlayerCommand {
         return raw;
     }
 
+    private void sendRegionMutationFailure(PlayerRef playerRef, HyGuardPlugin.RegionUpdateResult result, Region region) {
+        switch (result) {
+            case WORLD_MISMATCH -> plugin.send(playerRef, plugin.getConfigSnapshot().messages.selectionWorldMismatch);
+            case OVERLAP_CONFLICT -> plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionOverlapConflict);
+            case HIERARCHY_CONFLICT -> plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionHierarchyConflict);
+            case CHILD_LIMIT_REACHED -> plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionChildLimitReached, Map.of(
+                    "name", region == null ? "parent" : region.getName(),
+                    "limit", Integer.toString(plugin.getConfigSnapshot().limits.maxChildRegionsPerParent)
+            ));
+            case SELECTION_INCOMPLETE -> plugin.send(playerRef, plugin.getConfigSnapshot().messages.selectionIncomplete);
+            case SUCCESS -> {
+            }
+        }
+    }
+
     private static Map<String, HelpTopic> createHelpTopics() {
         LinkedHashMap<String, HelpTopic> topics = new LinkedHashMap<>();
         registerHelp(topics, new HelpTopic("wand", "/hg wand", "hyguard.help.topic.wand.description", "/hg wand", "hyguard.help.permission.player"));
@@ -1219,7 +1274,7 @@ public final class GuardCommand extends AbstractPlayerCommand {
         registerHelp(topics, new HelpTopic("gui", "/hg gui [name]", "hyguard.help.topic.gui.description", "/hg gui spawn", "hyguard.help.permission.player"));
         registerHelp(topics, new HelpTopic("backup", "/hg backup", "hyguard.help.topic.backup.description", "/hg backup", "hyguard.help.permission.admin"));
         registerHelp(topics, new HelpTopic("debug", "/hg debug pos", "hyguard.help.topic.debug.description", "/hg debug pos", "hyguard.help.permission.admin"));
-        registerHelp(topics, new HelpTopic("bypass", "/hg bypass", "hyguard.help.topic.bypass.description", "/hg bypass", "hyguard.help.permission.bypass_or_admin"));
+        registerHelp(topics, new HelpTopic("admin-override", "/hg admin-override", "hyguard.help.topic.admin_override.description", "/hg admin-override", "hyguard.help.permission.bypass_or_admin"));
         registerHelp(topics, new HelpTopic("save", "/hg save", "hyguard.help.topic.save.description", "/hg save", "hyguard.help.permission.admin"));
         registerHelp(topics, new HelpTopic("reload", "/hg reload", "hyguard.help.topic.reload.description", "/hg reload", "hyguard.help.permission.admin"));
         return topics;

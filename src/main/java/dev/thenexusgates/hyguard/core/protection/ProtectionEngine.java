@@ -20,11 +20,11 @@ public final class ProtectionEngine {
         this.config = config;
     }
 
-    public ProtectionResult evaluate(ProtectionQuery query, boolean hasAdminPermission) {
+    public ProtectionResult evaluate(ProtectionQuery query) {
         if (query.playerUuid() == null) {
             return ProtectionResult.allow();
         }
-        if (bypassHandler.isBypassing(query.playerUuid()) || hasAdminPermission) {
+        if (bypassHandler.isBypassing(query.playerUuid())) {
             return ProtectionResult.allow();
         }
 
@@ -38,7 +38,7 @@ public final class ProtectionEngine {
             if (role == RegionRole.VISITOR) {
                 return ProtectionResult.deny(region);
             }
-            if (role == RegionRole.OWNER || role == RegionRole.CO_OWNER || role == RegionRole.MANAGER || role == RegionRole.MEMBER) {
+            if (allowsByMembership(query.action(), role)) {
                 return ProtectionResult.allow();
             }
             if (role == RegionRole.TRUSTED && query.action() == ProtectionAction.BLOCK_INTERACT) {
@@ -46,7 +46,11 @@ public final class ProtectionEngine {
             }
 
             RegionFlagValue flagValue = region.getFlags().get(query.action().getFlag());
-            RegionFlagValue.Mode mode = flagValue == null ? defaultMode(query.action()) : flagValue.getMode();
+            if (flagValue == null || flagValue.getMode() == RegionFlagValue.Mode.INHERIT) {
+                continue;
+            }
+
+            RegionFlagValue.Mode mode = flagValue.getMode();
             switch (mode) {
                 case ALLOW -> {
                     return ProtectionResult.allow();
@@ -73,12 +77,25 @@ public final class ProtectionEngine {
         return ProtectionResult.allow();
     }
 
+    private boolean allowsByMembership(ProtectionAction action, RegionRole role) {
+        if (role == null) {
+            return false;
+        }
+        if (action == ProtectionAction.ENTRY || action == ProtectionAction.EXIT) {
+            return false;
+        }
+        return role == RegionRole.OWNER
+                || role == RegionRole.CO_OWNER
+                || role == RegionRole.MANAGER
+                || role == RegionRole.MEMBER;
+    }
+
     private RegionFlagValue.Mode defaultMode(ProtectionAction action) {
         return switch (action) {
             case BLOCK_BREAK -> RegionFlagValue.Mode.valueOf(config.defaults.blockBreak);
             case BLOCK_PLACE -> RegionFlagValue.Mode.valueOf(config.defaults.blockPlace);
             case BLOCK_INTERACT -> RegionFlagValue.Mode.valueOf(config.defaults.blockInteract);
-            case PVP, PLAYER_DAMAGE, PLAYER_FALL_DAMAGE, PLAYER_ITEM_DROP, PLAYER_ITEM_PICKUP, MOB_DAMAGE_PLAYERS -> RegionFlagValue.Mode.DENY;
+            case PVP, PLAYER_DAMAGE, PLAYER_FALL_DAMAGE, PLAYER_ITEM_DROP, PLAYER_ITEM_PICKUP, MOB_DAMAGE_PLAYERS, ENTITY_DAMAGE -> RegionFlagValue.Mode.DENY;
             case ENTRY, EXIT -> RegionFlagValue.Mode.ALLOW;
         };
     }

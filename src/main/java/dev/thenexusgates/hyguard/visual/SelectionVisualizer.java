@@ -12,17 +12,30 @@ import com.hypixel.hytale.server.core.io.PacketHandler;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import dev.thenexusgates.hyguard.core.selection.SelectionPoint;
 import dev.thenexusgates.hyguard.core.selection.SelectionSession;
+import dev.thenexusgates.hyguard.core.region.Region;
 import dev.thenexusgates.hyguard.util.BlockPos;
 import dev.thenexusgates.hyguard.util.BlockPosUtils;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 public final class SelectionVisualizer {
+
+    public enum PreviewState {
+        NEUTRAL,
+        CLAIMED,
+        AVAILABLE,
+        VALID,
+        INVALID
+    }
 
     private static final Logger LOGGER = Logger.getLogger("HyGuard");
     private static final long DEBUG_REFRESH_MS = 900L;
@@ -36,16 +49,10 @@ public final class SelectionVisualizer {
     private static final float TOP_ORB_SIZE = 0.24f;
     private static final byte FLAG_SOLID_ONLY = (byte) DebugUtils.FLAG_NO_WIREFRAME;
 
-    private static final Palette VALID_PALETTE = new Palette(
-            new Vector3f(0.13f, 0.35f, 0.95f),
-            new Vector3f(1.0f, 0.73f, 0.24f),
-            new Vector3f(0.88f, 0.96f, 1.0f)
-    );
-    private static final Palette CONFLICT_PALETTE = new Palette(
-            new Vector3f(0.93f, 0.24f, 0.30f),
-            new Vector3f(1.0f, 0.55f, 0.18f),
-            new Vector3f(1.0f, 0.88f, 0.75f)
-    );
+    private static final Theme YELLOW_THEME = new Theme(new Vector3f(0.96f, 0.79f, 0.16f), 0.34f, 0.23f, 0.82f);
+    private static final Theme GREEN_THEME = new Theme(new Vector3f(0.20f, 0.84f, 0.36f), 0.34f, 0.23f, 0.82f);
+    private static final Theme RED_THEME = new Theme(new Vector3f(0.94f, 0.26f, 0.31f), 0.34f, 0.23f, 0.82f);
+    private static final Theme BLUE_THEME = new Theme(new Vector3f(0.22f, 0.58f, 0.96f), 0.28f, 0.19f, 0.72f);
 
     private final ConcurrentHashMap<String, RenderState> activeRenders = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, PlayerRef> viewersByPlayer = new ConcurrentHashMap<>();
@@ -76,7 +83,10 @@ public final class SelectionVisualizer {
         return true;
     }
 
-    public void updateVisualization(PlayerRef viewer, SelectionSession selectionSession, boolean hasConflict) {
+    public void updateVisualization(PlayerRef viewer,
+                                    SelectionSession selectionSession,
+                                    PreviewState previewState,
+                                    List<Region> childRegions) {
         if (viewer == null || viewer.getUuid() == null) {
             return;
         }
@@ -101,7 +111,8 @@ public final class SelectionVisualizer {
         RenderState nextState = new RenderState(
                 BlockPosUtils.min(first, second),
                 BlockPosUtils.max(first, second),
-                hasConflict
+                previewState == null ? PreviewState.NEUTRAL : previewState,
+                buildOverlayRegions(childRegions)
         );
         RenderState current = activeRenders.put(playerUuid, nextState);
         if (nextState.equals(current)) {
@@ -151,20 +162,39 @@ public final class SelectionVisualizer {
 
         clearDebugShapes(viewer);
 
-        Palette palette = state.hasConflict() ? CONFLICT_PALETTE : VALID_PALETTE;
-        float minX = state.min().getX() - OUTER_PADDING;
-        float minY = state.min().getY() - OUTER_PADDING;
-        float minZ = state.min().getZ() - OUTER_PADDING;
-        float maxX = state.max().getX() + 1.0f + OUTER_PADDING;
-        float maxY = state.max().getY() + 1.0f + OUTER_PADDING;
-        float maxZ = state.max().getZ() + 1.0f + OUTER_PADDING;
+        renderOutline(viewer, state.min(), state.max(), themeFor(state.previewState()));
+        for (OverlayRegion overlayRegion : state.overlayRegions()) {
+            renderOutline(viewer, overlayRegion.min(), overlayRegion.max(), BLUE_THEME);
+        }
+    }
+
+    private void renderOutline(PlayerRef viewer, BlockPos min, BlockPos max, Theme theme) {
+        if (viewer == null || min == null || max == null || theme == null) {
+            return;
+        }
+
+        float minX = min.getX() - OUTER_PADDING;
+        float minY = min.getY() - OUTER_PADDING;
+        float minZ = min.getZ() - OUTER_PADDING;
+        float maxX = max.getX() + 1.0f + OUTER_PADDING;
+        float maxY = max.getY() + 1.0f + OUTER_PADDING;
+        float maxZ = max.getZ() + 1.0f + OUTER_PADDING;
 
         float groundY = minY + GROUND_LIFT;
         float topY = maxY - GROUND_LIFT;
-        sendPerimeterRails(viewer, minX, maxX, minZ, maxZ, groundY, GROUND_RAIL_THICKNESS, palette.ground(), 0.31f);
-        sendPerimeterRails(viewer, minX, maxX, minZ, maxZ, topY, TOP_RAIL_THICKNESS, palette.top(), 0.18f);
-        sendCornerPillars(viewer, minX, maxX, minY, maxY, minZ, maxZ, PILLAR_WIDTH, palette.pillar(), 0.19f);
-        sendCornerOrbs(viewer, minX, maxX, minY, maxY, minZ, maxZ, palette.ground(), palette.top());
+        sendPerimeterRails(viewer, minX, maxX, minZ, maxZ, groundY, GROUND_RAIL_THICKNESS, theme.color(), theme.railOpacity());
+        sendPerimeterRails(viewer, minX, maxX, minZ, maxZ, topY, TOP_RAIL_THICKNESS, theme.color(), theme.railOpacity());
+        sendCornerPillars(viewer, minX, maxX, minY, maxY, minZ, maxZ, PILLAR_WIDTH, theme.color(), theme.pillarOpacity());
+        sendVerticalConnectors(viewer, minX, maxX, minY, maxY, minZ, maxZ, theme.color(), theme.pillarOpacity());
+        sendCornerOrbs(viewer, minX, maxX, minY, maxY, minZ, maxZ, theme.color(), theme.orbOpacity());
+    }
+
+    private Theme themeFor(PreviewState previewState) {
+        return switch (previewState) {
+            case CLAIMED -> GREEN_THEME;
+            case INVALID -> RED_THEME;
+            case AVAILABLE, VALID, NEUTRAL -> YELLOW_THEME;
+        };
     }
 
     private void sendPerimeterRails(PlayerRef viewer,
@@ -204,6 +234,22 @@ public final class SelectionVisualizer {
         sendShape(viewer, DebugShape.Cylinder, maxX, centerY, maxZ, width, height, width, color, opacity, FLAG_SOLID_ONLY);
     }
 
+    private void sendVerticalConnectors(PlayerRef viewer,
+                                        float minX,
+                                        float maxX,
+                                        float minY,
+                                        float maxY,
+                                        float minZ,
+                                        float maxZ,
+                                        Vector3f color,
+                                        float opacity) {
+        float centerY = (minY + maxY) * 0.5f;
+        float height = maxY - minY;
+        for (ConnectorPoint connectorPoint : collectConnectorPoints(minX, maxX, minZ, maxZ)) {
+            sendShape(viewer, DebugShape.Cylinder, connectorPoint.x(), centerY, connectorPoint.z(), PILLAR_WIDTH, height, PILLAR_WIDTH, color, opacity, FLAG_SOLID_ONLY);
+        }
+    }
+
     private void sendCornerOrbs(PlayerRef viewer,
                                 float minX,
                                 float maxX,
@@ -211,20 +257,70 @@ public final class SelectionVisualizer {
                                 float maxY,
                                 float minZ,
                                 float maxZ,
-                                Vector3f groundColor,
-                                Vector3f topColor) {
+                                Vector3f color,
+                                float opacity) {
         float bottomY = minY + 0.08f;
         float topY = maxY - 0.08f;
 
-        sendShape(viewer, DebugShape.Sphere, minX, bottomY, minZ, BOTTOM_ORB_SIZE, BOTTOM_ORB_SIZE, BOTTOM_ORB_SIZE, groundColor, 0.84f, FLAG_SOLID_ONLY);
-        sendShape(viewer, DebugShape.Sphere, minX, bottomY, maxZ, BOTTOM_ORB_SIZE, BOTTOM_ORB_SIZE, BOTTOM_ORB_SIZE, groundColor, 0.84f, FLAG_SOLID_ONLY);
-        sendShape(viewer, DebugShape.Sphere, maxX, bottomY, minZ, BOTTOM_ORB_SIZE, BOTTOM_ORB_SIZE, BOTTOM_ORB_SIZE, groundColor, 0.84f, FLAG_SOLID_ONLY);
-        sendShape(viewer, DebugShape.Sphere, maxX, bottomY, maxZ, BOTTOM_ORB_SIZE, BOTTOM_ORB_SIZE, BOTTOM_ORB_SIZE, groundColor, 0.84f, FLAG_SOLID_ONLY);
+        sendShape(viewer, DebugShape.Sphere, minX, bottomY, minZ, BOTTOM_ORB_SIZE, BOTTOM_ORB_SIZE, BOTTOM_ORB_SIZE, color, opacity, FLAG_SOLID_ONLY);
+        sendShape(viewer, DebugShape.Sphere, minX, bottomY, maxZ, BOTTOM_ORB_SIZE, BOTTOM_ORB_SIZE, BOTTOM_ORB_SIZE, color, opacity, FLAG_SOLID_ONLY);
+        sendShape(viewer, DebugShape.Sphere, maxX, bottomY, minZ, BOTTOM_ORB_SIZE, BOTTOM_ORB_SIZE, BOTTOM_ORB_SIZE, color, opacity, FLAG_SOLID_ONLY);
+        sendShape(viewer, DebugShape.Sphere, maxX, bottomY, maxZ, BOTTOM_ORB_SIZE, BOTTOM_ORB_SIZE, BOTTOM_ORB_SIZE, color, opacity, FLAG_SOLID_ONLY);
 
-        sendShape(viewer, DebugShape.Sphere, minX, topY, minZ, TOP_ORB_SIZE, TOP_ORB_SIZE, TOP_ORB_SIZE, topColor, 0.56f, FLAG_SOLID_ONLY);
-        sendShape(viewer, DebugShape.Sphere, minX, topY, maxZ, TOP_ORB_SIZE, TOP_ORB_SIZE, TOP_ORB_SIZE, topColor, 0.56f, FLAG_SOLID_ONLY);
-        sendShape(viewer, DebugShape.Sphere, maxX, topY, minZ, TOP_ORB_SIZE, TOP_ORB_SIZE, TOP_ORB_SIZE, topColor, 0.56f, FLAG_SOLID_ONLY);
-        sendShape(viewer, DebugShape.Sphere, maxX, topY, maxZ, TOP_ORB_SIZE, TOP_ORB_SIZE, TOP_ORB_SIZE, topColor, 0.56f, FLAG_SOLID_ONLY);
+        sendShape(viewer, DebugShape.Sphere, minX, topY, minZ, TOP_ORB_SIZE, TOP_ORB_SIZE, TOP_ORB_SIZE, color, opacity, FLAG_SOLID_ONLY);
+        sendShape(viewer, DebugShape.Sphere, minX, topY, maxZ, TOP_ORB_SIZE, TOP_ORB_SIZE, TOP_ORB_SIZE, color, opacity, FLAG_SOLID_ONLY);
+        sendShape(viewer, DebugShape.Sphere, maxX, topY, minZ, TOP_ORB_SIZE, TOP_ORB_SIZE, TOP_ORB_SIZE, color, opacity, FLAG_SOLID_ONLY);
+        sendShape(viewer, DebugShape.Sphere, maxX, topY, maxZ, TOP_ORB_SIZE, TOP_ORB_SIZE, TOP_ORB_SIZE, color, opacity, FLAG_SOLID_ONLY);
+    }
+
+    private List<OverlayRegion> buildOverlayRegions(List<Region> childRegions) {
+        if (childRegions == null || childRegions.isEmpty()) {
+            return List.of();
+        }
+
+        ArrayList<OverlayRegion> overlays = new ArrayList<>();
+        for (Region childRegion : childRegions) {
+            if (childRegion == null || childRegion.isGlobal() || childRegion.getMin() == null || childRegion.getMax() == null) {
+                continue;
+            }
+            overlays.add(new OverlayRegion(childRegion.getMin(), childRegion.getMax()));
+        }
+        return List.copyOf(overlays);
+    }
+
+    private List<ConnectorPoint> collectConnectorPoints(float minX, float maxX, float minZ, float maxZ) {
+        Set<ConnectorPoint> connectorPoints = new LinkedHashSet<>();
+        addConnectorRange(connectorPoints, minX, maxX, minZ, true);
+        addConnectorRange(connectorPoints, minX, maxX, maxZ, true);
+        addConnectorRange(connectorPoints, minZ, maxZ, minX, false);
+        addConnectorRange(connectorPoints, minZ, maxZ, maxX, false);
+        return List.copyOf(connectorPoints);
+    }
+
+    private void addConnectorRange(Set<ConnectorPoint> connectorPoints,
+                                   float start,
+                                   float end,
+                                   float fixed,
+                                   boolean alongX) {
+        float span = end - start;
+        if (span <= 2.0f) {
+            return;
+        }
+
+        float quarter = start + span * 0.25f;
+        float center = start + span * 0.5f;
+        float threeQuarter = start + span * 0.75f;
+        addConnector(connectorPoints, alongX ? quarter : fixed, alongX ? fixed : quarter);
+        addConnector(connectorPoints, alongX ? center : fixed, alongX ? fixed : center);
+        addConnector(connectorPoints, alongX ? threeQuarter : fixed, alongX ? fixed : threeQuarter);
+    }
+
+    private void addConnector(Set<ConnectorPoint> connectorPoints, float x, float z) {
+        connectorPoints.add(new ConnectorPoint(roundCoordinate(x), roundCoordinate(z)));
+    }
+
+    private float roundCoordinate(float value) {
+        return Math.round(value * 1000.0f) / 1000.0f;
     }
 
     private void sendShape(PlayerRef viewer,
@@ -294,14 +390,27 @@ public final class SelectionVisualizer {
         }
     }
 
-    private record Palette(Vector3f pillar, Vector3f ground, Vector3f top) {
+    private record Theme(Vector3f color, float railOpacity, float pillarOpacity, float orbOpacity) {
     }
 
-    private record RenderState(BlockPos min, BlockPos max, boolean hasConflict) {
+    private record OverlayRegion(BlockPos min, BlockPos max) {
+
+        private OverlayRegion {
+            min = Objects.requireNonNull(min, "min").copy();
+            max = Objects.requireNonNull(max, "max").copy();
+        }
+    }
+
+    private record ConnectorPoint(float x, float z) {
+    }
+
+    private record RenderState(BlockPos min, BlockPos max, PreviewState previewState, List<OverlayRegion> overlayRegions) {
 
         private RenderState {
             min = Objects.requireNonNull(min, "min").copy();
             max = Objects.requireNonNull(max, "max").copy();
+            previewState = Objects.requireNonNull(previewState, "previewState");
+            overlayRegions = overlayRegions == null ? List.of() : List.copyOf(overlayRegions);
         }
     }
 }

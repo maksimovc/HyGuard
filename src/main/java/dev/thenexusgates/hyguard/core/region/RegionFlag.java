@@ -1,5 +1,8 @@
 package dev.thenexusgates.hyguard.core.region;
 
+import java.util.EnumSet;
+import java.util.List;
+
 public enum RegionFlag {
     BLOCK_BREAK,
     BLOCK_PLACE,
@@ -23,6 +26,8 @@ public enum RegionFlag {
     MOB_DAMAGE_BLOCKS,
     MOB_GRIEF,
     ANIMAL_DAMAGE,
+    ENTITY_DAMAGE,
+    KNOCKBACK,
     FIRE_SPREAD,
     TNT,
     EXPLOSION,
@@ -41,5 +46,26 @@ public enum RegionFlag {
     WEATHER_LOCK,
     TIME_LOCK,
     FLY,
-    SPAWN_LOCATION
+    SPAWN_LOCATION;
+
+    private static final EnumSet<RegionFlag> HIDDEN_FLAGS = EnumSet.of(
+            BLOCK_TRAMPLE,
+            BLOCK_DECAY,
+            BLOCK_SPREAD,
+            BLOCK_FADE,
+            BLOCK_FORM,
+            MOB_DAMAGE_BLOCKS,
+            MOB_GRIEF,
+            ANIMAL_DAMAGE,
+            TNT,
+            LIGHTNING
+    );
+
+    public boolean isUserVisible() {
+        return !HIDDEN_FLAGS.contains(this);
+    }
+
+    public static List<RegionFlag> visibleValues() {
+        return EnumSet.complementOf(HIDDEN_FLAGS).stream().toList();
+    }
 }

@@ -38,6 +38,7 @@
     "maxPriority": 100,
     "maxSelectionEditAmount": 500,
     "maxRegionsPerPlayer": 64,
+    "maxChildRegionsPerParent": 3,
     "maxMembersPerRegion": 64
   },
   "sounds": {

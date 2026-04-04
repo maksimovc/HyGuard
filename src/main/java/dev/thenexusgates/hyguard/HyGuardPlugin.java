@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.event.EventPriority;
 import com.hypixel.hytale.math.vector.Transform;
 import com.hypixel.hytale.math.vector.Vector3d;
 import com.hypixel.hytale.protocol.GameMode;
@@ -13,6 +14,9 @@ import com.hypixel.hytale.server.core.Message;
 import com.hypixel.hytale.server.core.NameMatching;
 import com.hypixel.hytale.server.core.entity.ItemUtils;
 import com.hypixel.hytale.server.core.entity.entities.Player;
+import com.hypixel.hytale.server.core.event.events.player.DrainPlayerFromWorldEvent;
+import com.hypixel.hytale.server.core.event.events.player.RemovedPlayerFromWorldEvent;
+import com.hypixel.hytale.server.core.event.events.player.PlayerInteractEvent;
 import com.hypixel.hytale.server.core.entity.entities.player.movement.MovementManager;
 import com.hypixel.hytale.server.core.inventory.ItemStack;
 import com.hypixel.hytale.server.core.modules.entity.EntityModule;
@@ -37,6 +41,7 @@ import dev.thenexusgates.hyguard.core.region.Region;
 import dev.thenexusgates.hyguard.core.region.RegionFlag;
 import dev.thenexusgates.hyguard.core.region.RegionFlagValue;
 import dev.thenexusgates.hyguard.core.region.RegionRole;
+import dev.thenexusgates.hyguard.core.selection.SelectionPoint;
 import dev.thenexusgates.hyguard.core.selection.SelectionSession;
 import dev.thenexusgates.hyguard.core.selection.SelectionService;
 import dev.thenexusgates.hyguard.core.selection.WandItem;
@@ -45,7 +50,10 @@ import dev.thenexusgates.hyguard.event.HyGuardChangeGameModeSystem;
 import dev.thenexusgates.hyguard.event.DisconnectCleanupSystem;
 import dev.thenexusgates.hyguard.event.HyGuardDamageBlockSystem;
 import dev.thenexusgates.hyguard.event.HyGuardEntityDamageSystem;
+import dev.thenexusgates.hyguard.event.HyGuardInteractionListener;
 import dev.thenexusgates.hyguard.event.HyGuardItemSystem;
+import dev.thenexusgates.hyguard.event.HyGuardKnockbackBypassMarker;
+import dev.thenexusgates.hyguard.event.HyGuardKnockbackSystem;
 import dev.thenexusgates.hyguard.event.HyGuardMobSpawnSystem;
 import dev.thenexusgates.hyguard.event.PlayerMoveSystem;
 import dev.thenexusgates.hyguard.event.HyGuardPlaceBlockSystem;
@@ -79,10 +87,12 @@ import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -95,13 +105,52 @@ public final class HyGuardPlugin extends JavaPlugin {
         SUCCESS,
         SELECTION_INCOMPLETE,
         WORLD_MISMATCH,
-        OVERLAP_CONFLICT
+        OVERLAP_CONFLICT,
+        HIERARCHY_CONFLICT,
+        CHILD_LIMIT_REACHED
+    }
+
+    public record RegionCreationResult(Region region, RegionUpdateResult result) {
+        public static RegionCreationResult success(Region region) {
+            return new RegionCreationResult(region, RegionUpdateResult.SUCCESS);
+        }
+
+        public static RegionCreationResult failure(RegionUpdateResult result) {
+            return new RegionCreationResult(null, result);
+        }
+
+        public boolean isSuccess() {
+            return region != null && result == RegionUpdateResult.SUCCESS;
+        }
     }
 
     public record PlayerIdentity(String uuid, String username) {
     }
 
     private record WandLeftClickState(String worldId, BlockPos position, long timestampMs) {
+    }
+
+    private record RegionPlacementValidation(RegionUpdateResult result, Region parentRegion) {
+        private boolean isSuccess() {
+            return result == RegionUpdateResult.SUCCESS;
+        }
+    }
+
+    private record SelectionVisualizationContext(SelectionVisualizer.PreviewState previewState,
+                                                 List<Region> childRegions) {
+        private SelectionVisualizationContext {
+            childRegions = childRegions == null ? List.of() : List.copyOf(childRegions);
+        }
+    }
+
+    private record SelectionSnapshot(String worldId,
+                                     BlockPos first,
+                                     BlockPos second,
+                                     boolean nextPointIsFirst) {
+        private SelectionSnapshot {
+            first = first == null ? null : first.copy();
+            second = second == null ? null : second.copy();
+        }
     }
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -130,6 +179,7 @@ public final class HyGuardPlugin extends JavaPlugin {
     private PlayerMoveSystem playerMoveSystem;
     private DisconnectCleanupSystem disconnectCleanupSystem;
     private final ConcurrentHashMap<String, WandLeftClickState> recentWandLeftClicks = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, SelectionSnapshot> lastClearedSelections = new ConcurrentHashMap<>();
 
     public HyGuardPlugin(@Nonnull JavaPluginInit init) {
         super(init);
@@ -169,14 +219,24 @@ public final class HyGuardPlugin extends JavaPlugin {
         );
         getCommandRegistry().registerCommand(new GuardCommand(this));
         getEventRegistry().registerGlobal(com.hypixel.hytale.server.core.event.events.player.PlayerDisconnectEvent.class, disconnectCleanupSystem::handle);
+        getEventRegistry().registerGlobal(RemovedPlayerFromWorldEvent.class, disconnectCleanupSystem::handle);
+        getEventRegistry().registerGlobal(DrainPlayerFromWorldEvent.class, disconnectCleanupSystem::handle);
+        getEventRegistry().registerGlobal(EventPriority.FIRST, PlayerInteractEvent.class, new HyGuardInteractionListener(this)::handle);
 
         if (EntityModule.get() != null) {
+            HyGuardKnockbackBypassMarker.register(
+                getEntityStoreRegistry().registerComponent(
+                    HyGuardKnockbackBypassMarker.class,
+                    HyGuardKnockbackBypassMarker::new
+                )
+            );
             getEntityStoreRegistry().registerSystem(new HyGuardDamageBlockSystem(this));
             getEntityStoreRegistry().registerSystem(new HyGuardBreakBlockSystem(this));
             getEntityStoreRegistry().registerSystem(new HyGuardPlaceBlockSystem(this));
             getEntityStoreRegistry().registerSystem(new HyGuardUseBlockSystem(this));
             getEntityStoreRegistry().registerSystem(new HyGuardChangeGameModeSystem(this));
             getEntityStoreRegistry().registerSystem(new HyGuardEntityDamageSystem(this));
+            getEntityStoreRegistry().registerSystem(new HyGuardKnockbackSystem(this));
             getEntityStoreRegistry().registerSystem(new HyGuardItemSystem.DropSystem(this));
             getEntityStoreRegistry().registerSystem(new HyGuardItemSystem.PickupSystem(this));
             getLogger().at(Level.INFO).log(HyGuardMobSpawnSystem.NO_API_REASON);
@@ -241,6 +301,7 @@ public final class HyGuardPlugin extends JavaPlugin {
         selectionService.clear(playerUuid);
         bypassHandler.clear(playerUuid);
         recentWandLeftClicks.remove(playerUuid);
+        lastClearedSelections.remove(playerUuid);
         if (selectionVisualizer != null) {
             selectionVisualizer.clearPlayer(playerUuid);
         }
@@ -268,7 +329,7 @@ public final class HyGuardPlugin extends JavaPlugin {
     public boolean canBypassProtection(PlayerRef playerRef) {
         return playerRef != null
                 && playerRef.getUuid() != null
-                && (hasAdminPermission(playerRef) || bypassHandler.isBypassing(playerRef.getUuid().toString()));
+                && bypassHandler.isBypassing(playerRef.getUuid().toString());
     }
 
     public boolean hasUsePermission(PlayerRef playerRef) {
@@ -285,6 +346,10 @@ public final class HyGuardPlugin extends JavaPlugin {
 
     public boolean toggleBypass(PlayerRef playerRef) {
         return bypassHandler.toggle(playerRef.getUuid().toString());
+    }
+
+    public boolean toggleAdminOverride(PlayerRef playerRef) {
+        return toggleBypass(playerRef);
     }
 
     public String text(PlayerRef playerRef, String key, Map<String, String> replacements) {
@@ -364,29 +429,44 @@ public final class HyGuardPlugin extends JavaPlugin {
                 .count();
     }
 
-    public Region createRegion(PlayerRef playerRef, String worldId, String name) {
+    public RegionCreationResult createRegion(PlayerRef playerRef, String worldId, String name) {
         return createRegion(playerRef, worldId, name, playerRef.getUuid().toString(), playerRef.getUsername());
     }
 
-    public Region createServerRegion(PlayerRef playerRef, String worldId, String name) {
+    public RegionCreationResult createServerRegion(PlayerRef playerRef, String worldId, String name) {
         return createRegion(playerRef, worldId, name, SERVER_REGION_OWNER_UUID, SERVER_REGION_OWNER_NAME);
     }
 
-    private Region createRegion(PlayerRef playerRef, String worldId, String name, String ownerUuid, String ownerName) {
+    private RegionCreationResult createRegion(PlayerRef playerRef, String worldId, String name, String ownerUuid, String ownerName) {
         String playerUuid = playerRef.getUuid().toString();
         var session = selectionService.get(playerUuid);
         if (session == null || !session.isComplete() || !worldId.equalsIgnoreCase(session.getWorldId())) {
-            return null;
+            return RegionCreationResult.failure(RegionUpdateResult.SELECTION_INCOMPLETE);
         }
 
-        if (hasOverlapConflict(worldId, ownerUuid, session.getFirstPoint().getPosition(), session.getSecondPoint().getPosition(), null)) {
-            return null;
+        RegionPlacementValidation validation = validateRegionPlacement(
+                playerRef,
+                worldId,
+                session.getFirstPoint().getPosition(),
+                session.getSecondPoint().getPosition(),
+                null
+        );
+        if (!validation.isSuccess()) {
+            return RegionCreationResult.failure(validation.result());
+        }
+
+        Region parentRegion = validation.parentRegion();
+        String effectiveOwnerUuid = ownerUuid;
+        String effectiveOwnerName = ownerName;
+        if (isServerOwned(parentRegion)) {
+            effectiveOwnerUuid = parentRegion.getOwnerUuid();
+            effectiveOwnerName = parentRegion.getOwnerName();
         }
 
         Region region = Region.create(
                 name,
-                ownerUuid,
-                ownerName,
+                effectiveOwnerUuid,
+                effectiveOwnerName,
                 worldId,
                 session.getFirstPoint().getPosition(),
                 session.getSecondPoint().getPosition()
@@ -397,7 +477,7 @@ public final class HyGuardPlugin extends JavaPlugin {
 
         regionCache.put(region);
         regionRepository.saveRegionAsync(region);
-        return region;
+        return RegionCreationResult.success(region);
     }
 
     public Region createGlobalRegion(PlayerRef playerRef, String worldId, String name) {
@@ -413,6 +493,9 @@ public final class HyGuardPlugin extends JavaPlugin {
     }
 
     public boolean deleteRegion(Region region) {
+        if (region == null || hasChildRegions(region)) {
+            return false;
+        }
         Region removed = regionCache.remove(region.getId());
         if (removed == null) {
             return false;
@@ -456,6 +539,10 @@ public final class HyGuardPlugin extends JavaPlugin {
         return role != null && role.isAtLeast(RegionRole.MANAGER);
     }
 
+    public boolean hasChildRegions(Region region) {
+        return region != null && !region.getChildRegionIds().isEmpty();
+    }
+
     public List<Region> getWorldRegions(String worldId) {
         return regionCache.allRegions().stream()
                 .filter(region -> region.getWorldId() != null && region.getWorldId().equalsIgnoreCase(worldId))
@@ -463,8 +550,50 @@ public final class HyGuardPlugin extends JavaPlugin {
                 .toList();
     }
 
+    public List<Region> getDisplayRootRegions(String worldId) {
+        return getWorldRegions(worldId).stream()
+                .filter(region -> !isNestedDisplayChild(region))
+                .toList();
+    }
+
+    public List<Region> getDisplayChildRegions(Region parentRegion) {
+        if (parentRegion == null || parentRegion.isGlobal()) {
+            return List.of();
+        }
+
+        return parentRegion.getChildRegionIds().stream()
+                .map(regionCache::findById)
+                .filter(Objects::nonNull)
+                .filter(region -> !region.isGlobal())
+                .sorted(Comparator.comparing(Region::getName, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+    }
+
     public List<Region> getRegionsAt(String worldId, BlockPos position) {
         return regionCache.getRegionsAt(worldId, position);
+    }
+
+    public List<Region> getRegionsAt(String worldId, List<BlockPos> positions) {
+        if (worldId == null || positions == null || positions.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, Region> regionsById = new HashMap<>();
+        for (BlockPos position : positions) {
+            if (position == null) {
+                continue;
+            }
+            for (Region region : regionCache.getRegionsAt(worldId, position)) {
+                regionsById.putIfAbsent(region.getId(), region);
+            }
+        }
+
+        ArrayList<Region> regions = new ArrayList<>(regionsById.values());
+        regions.sort(Comparator
+                .comparingLong(Region::getVolume)
+                .thenComparing(Comparator.comparingInt(Region::getPriority).reversed())
+                .thenComparing(Region::getName, String.CASE_INSENSITIVE_ORDER));
+        return List.copyOf(regions);
     }
 
     public boolean loadRegionSelection(PlayerRef playerRef, Region region) {
@@ -540,12 +669,33 @@ public final class HyGuardPlugin extends JavaPlugin {
     }
 
     public void clearSelection(PlayerRef playerRef) {
+        clearSelection(playerRef, true);
+    }
+
+    public void toggleSelectionClear(PlayerRef playerRef) {
+        if (playerRef == null || playerRef.getUuid() == null) {
+            return;
+        }
+
+        SelectionSession session = selectionService.get(playerRef.getUuid().toString());
+        if (session != null && session.hasAnyPoint()) {
+            clearSelection(playerRef, true);
+            return;
+        }
+
+        restoreLastClearedSelection(playerRef);
+    }
+
+    private void clearSelection(PlayerRef playerRef, boolean rememberForRestore) {
         if (playerRef == null || playerRef.getUuid() == null) {
             return;
         }
 
         String playerUuid = playerRef.getUuid().toString();
         SelectionSession session = selectionService.get(playerUuid);
+        if (rememberForRestore && session != null && session.hasAnyPoint()) {
+            lastClearedSelections.put(playerUuid, snapshotSelection(session));
+        }
         selectionService.clear(playerUuid);
         recentWandLeftClicks.remove(playerUuid);
         if (selectionVisualizer != null) {
@@ -554,6 +704,66 @@ public final class HyGuardPlugin extends JavaPlugin {
         if (session != null && session.hasAnyPoint()) {
             send(playerRef, config.messages.selectionCleared);
             sounds.play(playerRef, HyGuardSounds.Cue.DELETE);
+        }
+    }
+
+    private void restoreLastClearedSelection(PlayerRef playerRef) {
+        if (playerRef == null || playerRef.getUuid() == null) {
+            return;
+        }
+
+        String playerUuid = playerRef.getUuid().toString();
+        SelectionSnapshot snapshot = lastClearedSelections.remove(playerUuid);
+        if (snapshot == null || snapshot.worldId() == null || (snapshot.first() == null && snapshot.second() == null)) {
+            return;
+        }
+
+        selectionService.clear(playerUuid);
+        if (snapshot.first() != null) {
+            selectionService.setFirstPoint(playerUuid, snapshot.worldId(), snapshot.first());
+        }
+        if (snapshot.second() != null) {
+            selectionService.setSecondPoint(playerUuid, snapshot.worldId(), snapshot.second());
+        }
+        SelectionSession restored = selectionService.getOrCreate(playerUuid);
+        restored.setNextPointIsFirst(snapshot.nextPointIsFirst());
+        refreshSelectionVisualization(playerRef);
+        sendSelectionRestoreFeedback(playerRef, restored);
+        sounds.play(playerRef, HyGuardSounds.Cue.SELECTION_POINT_TWO);
+    }
+
+    private SelectionSnapshot snapshotSelection(SelectionSession session) {
+        if (session == null) {
+            return null;
+        }
+
+        return new SelectionSnapshot(
+                session.getWorldId(),
+                session.getFirstPoint() == null ? null : session.getFirstPoint().getPosition(),
+                session.getSecondPoint() == null ? null : session.getSecondPoint().getPosition(),
+                session.isNextPointFirst()
+        );
+    }
+
+    private void sendSelectionRestoreFeedback(PlayerRef playerRef, SelectionSession session) {
+        if (playerRef == null || session == null || !session.hasAnyPoint()) {
+            return;
+        }
+
+        if (session.isComplete()) {
+            BlockPos min = BlockPosUtils.min(session.getFirstPoint().getPosition(), session.getSecondPoint().getPosition());
+            BlockPos max = BlockPosUtils.max(session.getFirstPoint().getPosition(), session.getSecondPoint().getPosition());
+            send(playerRef, config.messages.selectionUpdated, Map.of(
+                    "min", min.toString(),
+                    "max", max.toString(),
+                    "size", formatSelectionSize(session)
+            ));
+            return;
+        }
+
+        SelectionPoint point = session.getFirstPoint() != null ? session.getFirstPoint() : session.getSecondPoint();
+        if (point != null) {
+            send(playerRef, config.messages.selectionPointOneSet, Map.of("pos", point.getPosition().toString()));
         }
     }
 
@@ -566,14 +776,89 @@ public final class HyGuardPlugin extends JavaPlugin {
             selectionVisualizer.clearPlayer(playerRef.getUuid().toString());
             return;
         }
-        boolean hasConflict = session.isComplete() && hasOverlapConflict(
-            session.getWorldId(),
-            playerRef.getUuid().toString(),
-            session.getFirstPoint().getPosition(),
-            session.getSecondPoint().getPosition(),
-            null
+        SelectionVisualizationContext context = buildSelectionVisualizationContext(playerRef, session);
+        selectionVisualizer.updateVisualization(playerRef, session, context.previewState(), context.childRegions());
+    }
+
+    private SelectionVisualizationContext buildSelectionVisualizationContext(PlayerRef playerRef, SelectionSession session) {
+        if (session == null || !session.isComplete()) {
+            return new SelectionVisualizationContext(SelectionVisualizer.PreviewState.NEUTRAL, List.of());
+        }
+
+        BlockPos selectionMin = BlockPosUtils.min(session.getFirstPoint().getPosition(), session.getSecondPoint().getPosition());
+        BlockPos selectionMax = BlockPosUtils.max(session.getFirstPoint().getPosition(), session.getSecondPoint().getPosition());
+        Region exactRegion = findExactRegionByBounds(session.getWorldId(), selectionMin, selectionMax);
+        if (exactRegion != null && !exactRegion.isGlobal() && canManageRegion(playerRef, exactRegion)) {
+            List<Region> childRegions = isPrimaryRegion(exactRegion)
+                    ? getDisplayChildRegions(exactRegion)
+                    : List.of();
+            return new SelectionVisualizationContext(SelectionVisualizer.PreviewState.CLAIMED, childRegions);
+        }
+
+        RegionPlacementValidation validation = validateRegionPlacement(
+                playerRef,
+                session.getWorldId(),
+                session.getFirstPoint().getPosition(),
+                session.getSecondPoint().getPosition(),
+                null
         );
-        selectionVisualizer.updateVisualization(playerRef, session, hasConflict);
+        return new SelectionVisualizationContext(
+                validation.isSuccess() ? SelectionVisualizer.PreviewState.AVAILABLE : SelectionVisualizer.PreviewState.INVALID,
+                List.of()
+        );
+    }
+
+    private Region findExactRegionByBounds(String worldId, BlockPos min, BlockPos max) {
+        if (worldId == null || min == null || max == null) {
+            return null;
+        }
+
+        for (Region region : getWorldRegions(worldId)) {
+            if (region.isGlobal() || region.getMin() == null || region.getMax() == null) {
+                continue;
+            }
+            if (region.getMin().equals(min) && region.getMax().equals(max)) {
+                return region;
+            }
+        }
+        return null;
+    }
+
+    private boolean isNestedDisplayChild(Region region) {
+        if (region == null) {
+            return false;
+        }
+
+        String parentRegionId = region.getParentRegionId();
+        if (parentRegionId == null || parentRegionId.isBlank()) {
+            return false;
+        }
+
+        Region parent = regionCache.findById(parentRegionId);
+        return parent != null && !parent.isGlobal();
+    }
+
+    public Region getSelectionPlacementParent(PlayerRef playerRef, String worldId) {
+        if (playerRef == null || playerRef.getUuid() == null || worldId == null) {
+            return null;
+        }
+
+        SelectionSession session = selectionService.get(playerRef.getUuid().toString());
+        if (session == null || !session.isComplete() || session.getWorldId() == null || !worldId.equalsIgnoreCase(session.getWorldId())) {
+            return null;
+        }
+
+        return validateRegionPlacement(
+                playerRef,
+                worldId,
+                session.getFirstPoint().getPosition(),
+                session.getSecondPoint().getPosition(),
+                null
+        ).parentRegion();
+    }
+
+    public boolean selectionInheritsServerOwnership(PlayerRef playerRef, String worldId) {
+        return isServerOwned(getSelectionPlacementParent(playerRef, worldId));
     }
 
     public String formatSelectionSize(SelectionSession session) {
@@ -601,8 +886,15 @@ public final class HyGuardPlugin extends JavaPlugin {
         if (!worldId.equalsIgnoreCase(session.getWorldId()) || !region.getWorldId().equalsIgnoreCase(session.getWorldId())) {
             return RegionUpdateResult.WORLD_MISMATCH;
         }
-        if (hasOverlapConflict(region.getWorldId(), region.getOwnerUuid(), session.getFirstPoint().getPosition(), session.getSecondPoint().getPosition(), region.getId())) {
-            return RegionUpdateResult.OVERLAP_CONFLICT;
+        RegionPlacementValidation validation = validateRegionPlacement(
+                playerRef,
+                region.getWorldId(),
+                session.getFirstPoint().getPosition(),
+                session.getSecondPoint().getPosition(),
+                region.getId()
+        );
+        if (!validation.isSuccess()) {
+            return validation.result();
         }
 
         region.setBounds(session.getFirstPoint().getPosition(), session.getSecondPoint().getPosition());
@@ -699,8 +991,7 @@ public final class HyGuardPlugin extends JavaPlugin {
         if (playerRef == null) {
             return ProtectionResult.allow();
         }
-        boolean admin = hasAdminPermission(playerRef);
-        return protectionEngine.evaluate(new ProtectionQuery(playerRef.getUuid().toString(), worldId, position, action), admin);
+        return protectionEngine.evaluate(new ProtectionQuery(playerRef.getUuid().toString(), worldId, position, action));
     }
 
     public boolean isFlagAllowed(PlayerRef playerRef,
@@ -827,17 +1118,42 @@ public final class HyGuardPlugin extends JavaPlugin {
     }
 
     public Region regionAt(World world, PlayerRef playerRef) {
-        Transform transform = playerRef == null ? null : playerRef.getTransform();
-        if (world == null || transform == null || transform.getPosition() == null) {
+        List<BlockPos> positions = resolvePlayerRegionPositions(playerRef);
+        if (world == null || positions.isEmpty()) {
             return null;
         }
-        BlockPos position = new BlockPos(
+        List<Region> regions = getRegionsAt(world.getName(), positions);
+        return regions.isEmpty() ? null : regions.getFirst();
+    }
+
+    public BlockPos resolvePlayerRegionPosition(PlayerRef playerRef) {
+        Transform transform = playerRef == null ? null : playerRef.getTransform();
+        if (transform == null || transform.getPosition() == null) {
+            return null;
+        }
+        return new BlockPos(
                 (int) Math.floor(transform.getPosition().getX()),
-                (int) Math.floor(transform.getPosition().getY()),
+                (int) Math.floor(transform.getPosition().getY() + 0.25D),
                 (int) Math.floor(transform.getPosition().getZ())
         );
-        List<Region> regions = regionCache.getRegionsAt(world.getName(), position);
-        return regions.isEmpty() ? null : regions.getFirst();
+    }
+
+    public List<BlockPos> resolvePlayerRegionPositions(PlayerRef playerRef) {
+        Transform transform = playerRef == null ? null : playerRef.getTransform();
+        if (transform == null || transform.getPosition() == null) {
+            return List.of();
+        }
+
+        int blockX = (int) Math.floor(transform.getPosition().getX());
+        int minBlockY = (int) Math.floor(transform.getPosition().getY());
+        int maxBlockY = Math.max(minBlockY, (int) Math.floor(transform.getPosition().getY() + 1.8D));
+        int blockZ = (int) Math.floor(transform.getPosition().getZ());
+
+        ArrayList<BlockPos> positions = new ArrayList<>(maxBlockY - minBlockY + 1);
+        for (int blockY = minBlockY; blockY <= maxBlockY; blockY++) {
+            positions.add(new BlockPos(blockX, blockY, blockZ));
+        }
+        return List.copyOf(positions);
     }
 
     public void openRegionBrowser(Store<EntityStore> store, Ref<EntityStore> entityRef, PlayerRef playerRef, World world) {
@@ -849,6 +1165,21 @@ public final class HyGuardPlugin extends JavaPlugin {
             return;
         }
         player.getPageManager().openCustomPage(entityRef, store, new RegionBrowserPage(playerRef, this, world.getName()));
+    }
+
+    public void openChildRegionBrowser(Store<EntityStore> store,
+                                       Ref<EntityStore> entityRef,
+                                       PlayerRef playerRef,
+                                       String worldId,
+                                       String parentRegionName) {
+        if (store == null || entityRef == null || playerRef == null || worldId == null || parentRegionName == null) {
+            return;
+        }
+        Player player = store.getComponent(entityRef, Player.getComponentType());
+        if (player == null) {
+            return;
+        }
+        player.getPageManager().openCustomPage(entityRef, store, new RegionBrowserPage(playerRef, this, worldId, parentRegionName));
     }
 
     public void openRegionDetail(Store<EntityStore> store, Ref<EntityStore> entityRef, PlayerRef playerRef, String worldId, String regionName) {
@@ -928,26 +1259,200 @@ public final class HyGuardPlugin extends JavaPlugin {
         }
     }
 
-    private boolean hasOverlapConflict(String worldId, String ownerUuid, BlockPos first, BlockPos second, String ignoredRegionId) {
-        Region candidate = Region.create("candidate", ownerUuid, ownerUuid, worldId, first, second);
-        for (Region existing : regionCache.allRegions()) {
-            if (ignoredRegionId != null && ignoredRegionId.equals(existing.getId())) {
-                continue;
+    private RegionPlacementValidation validateRegionPlacement(PlayerRef actor,
+                                                              String worldId,
+                                                              BlockPos first,
+                                                              BlockPos second,
+                                                              String ignoredRegionId) {
+        if (actor == null || worldId == null || first == null || second == null) {
+            return new RegionPlacementValidation(RegionUpdateResult.SELECTION_INCOMPLETE, null);
+        }
+
+        Region candidate = Region.create("candidate", actor.getUuid().toString(), actor.getUsername(), worldId, first, second);
+        List<Region> worldRegions = regionCache.allRegions().stream()
+                .filter(region -> region.getWorldId() != null && region.getWorldId().equalsIgnoreCase(worldId))
+                .toList();
+
+        Region parent = findPlacementParent(worldRegions, candidate, ignoredRegionId);
+        if (parent != null && !parent.isGlobal()) {
+            if (!canManageRegion(actor, parent)) {
+                return new RegionPlacementValidation(RegionUpdateResult.OVERLAP_CONFLICT, parent);
             }
-            if (!existing.getWorldId().equalsIgnoreCase(worldId)) {
+            if (!canHostChildPlots(parent)) {
+                return new RegionPlacementValidation(RegionUpdateResult.HIERARCHY_CONFLICT, parent);
+            }
+            if (ignoredRegionId != null && hasDescendantRegions(ignoredRegionId)) {
+                return new RegionPlacementValidation(RegionUpdateResult.HIERARCHY_CONFLICT, parent);
+            }
+
+            int childLimit = config.limits.maxChildRegionsPerParent;
+            if (!isServerOwned(parent) && childLimit >= 0 && countDirectChildren(parent, ignoredRegionId) >= childLimit) {
+                return new RegionPlacementValidation(RegionUpdateResult.CHILD_LIMIT_REACHED, parent);
+            }
+        }
+
+        if (ignoredRegionId != null && !descendantsRemainInside(candidate, ignoredRegionId)) {
+            return new RegionPlacementValidation(RegionUpdateResult.HIERARCHY_CONFLICT, parent);
+        }
+
+        for (Region existing : worldRegions) {
+            if (ignoredRegionId != null && ignoredRegionId.equals(existing.getId())) {
                 continue;
             }
             if (!GeometryUtils.intersects(existing, candidate)) {
                 continue;
             }
-            if (GeometryUtils.contains(existing, candidate) || GeometryUtils.contains(candidate, existing)) {
+            if (isAllowedAncestorOverlap(existing, candidate, parent)) {
                 continue;
             }
-            if (ownerUuid == null || existing.getOwnerUuid() == null || !existing.getOwnerUuid().equalsIgnoreCase(ownerUuid)) {
+            if (isAllowedDescendantOverlap(existing, candidate, ignoredRegionId)) {
+                continue;
+            }
+            return new RegionPlacementValidation(resolvePlacementConflict(existing, candidate), parent);
+        }
+
+        return new RegionPlacementValidation(RegionUpdateResult.SUCCESS, parent);
+    }
+
+    private Region findPlacementParent(List<Region> worldRegions, Region candidate, String ignoredRegionId) {
+        Region best = null;
+        for (Region existing : worldRegions) {
+            if ((ignoredRegionId != null && ignoredRegionId.equals(existing.getId())) || !GeometryUtils.contains(existing, candidate)) {
+                continue;
+            }
+            if (best == null
+                    || existing.getVolume() < best.getVolume()
+                    || (existing.getVolume() == best.getVolume() && existing.getPriority() > best.getPriority())) {
+                best = existing;
+            }
+        }
+        return best;
+    }
+
+    private boolean isAllowedAncestorOverlap(Region existing, Region candidate, Region parent) {
+        if (!GeometryUtils.contains(existing, candidate)) {
+            return false;
+        }
+        if (existing.isGlobal()) {
+            return true;
+        }
+        return parent != null && isAncestorOrSelf(existing, parent);
+    }
+
+    private boolean isAllowedDescendantOverlap(Region existing, Region candidate, String ignoredRegionId) {
+        return ignoredRegionId != null
+                && GeometryUtils.contains(candidate, existing)
+                && isDescendantOf(existing, ignoredRegionId);
+    }
+
+    private RegionUpdateResult resolvePlacementConflict(Region existing, Region candidate) {
+        if (GeometryUtils.contains(candidate, existing) || GeometryUtils.contains(existing, candidate)) {
+            return RegionUpdateResult.HIERARCHY_CONFLICT;
+        }
+        return RegionUpdateResult.OVERLAP_CONFLICT;
+    }
+
+    private boolean canHostChildPlots(Region region) {
+        return isPrimaryRegion(region);
+    }
+
+    private boolean isPrimaryRegion(Region region) {
+        if (region == null || region.isGlobal()) {
+            return false;
+        }
+        String parentRegionId = region.getParentRegionId();
+        if (parentRegionId == null || parentRegionId.isBlank()) {
+            return true;
+        }
+        Region parent = regionCache.findById(parentRegionId);
+        return parent == null || parent.isGlobal();
+    }
+
+    private boolean isAncestorOrSelf(Region possibleAncestor, Region region) {
+        if (possibleAncestor == null || region == null) {
+            return false;
+        }
+        if (possibleAncestor.getId().equals(region.getId())) {
+            return true;
+        }
+
+        String currentParentId = region.getParentRegionId();
+        while (currentParentId != null && !currentParentId.isBlank()) {
+            Region currentParent = regionCache.findById(currentParentId);
+            if (currentParent == null) {
+                return false;
+            }
+            if (possibleAncestor.getId().equals(currentParent.getId())) {
+                return true;
+            }
+            currentParentId = currentParent.getParentRegionId();
+        }
+        return false;
+    }
+
+    private boolean isDescendantOf(Region region, String ancestorRegionId) {
+        if (region == null || ancestorRegionId == null || ancestorRegionId.isBlank()) {
+            return false;
+        }
+
+        String currentParentId = region.getParentRegionId();
+        while (currentParentId != null && !currentParentId.isBlank()) {
+            if (ancestorRegionId.equals(currentParentId)) {
+                return true;
+            }
+            Region currentParent = regionCache.findById(currentParentId);
+            if (currentParent == null) {
+                return false;
+            }
+            currentParentId = currentParent.getParentRegionId();
+        }
+        return false;
+    }
+
+    private boolean hasDescendantRegions(String regionId) {
+        for (Region existing : regionCache.allRegions()) {
+            if (regionId.equals(existing.getId())) {
+                continue;
+            }
+            if (isDescendantOf(existing, regionId)) {
                 return true;
             }
         }
         return false;
+    }
+
+    private boolean descendantsRemainInside(Region candidate, String regionId) {
+        for (Region existing : regionCache.allRegions()) {
+            if (regionId.equals(existing.getId())) {
+                continue;
+            }
+            if (isDescendantOf(existing, regionId) && !GeometryUtils.contains(candidate, existing)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private int countDirectChildren(Region parent, String ignoredRegionId) {
+        int count = 0;
+        for (String childRegionId : parent.getChildRegionIds()) {
+            if (ignoredRegionId != null && ignoredRegionId.equals(childRegionId)) {
+                continue;
+            }
+            Region child = regionCache.findById(childRegionId);
+            if (child != null && !child.isGlobal()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private boolean isServerOwned(Region region) {
+        return region != null && SERVER_REGION_OWNER_UUID.equalsIgnoreCase(region.getOwnerUuid());
+    }
+
+    public boolean isServerOwnedRegion(Region region) {
+        return isServerOwned(region);
     }
 
     private BlockPos resolvePlayerBlockPosition(PlayerRef playerRef) {

@@ -21,7 +21,7 @@ public final class HyGuardPermissions {
     }
 
     public boolean hasBypass(PlayerRef playerRef) {
-        return has(playerRef, general.bypassPermission) || hasAdmin(playerRef);
+        return has(playerRef, general.bypassPermission);
     }
 
     public boolean has(PlayerRef playerRef, String permission) {

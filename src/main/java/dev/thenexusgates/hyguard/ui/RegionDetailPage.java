@@ -147,6 +147,9 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
                 if (!plugin.canManageRegion(playerRef, region)) {
                     plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
                     setStatus(StatusTone.ERROR, "You do not have permission to delete this region.");
+                } else if (plugin.hasChildRegions(region)) {
+                    plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionDeleteHasChildren, Map.of("name", region.getName()));
+                    setStatus(StatusTone.ERROR, "Delete or move this region's child plots first.");
                 } else if (!deleteArmed) {
                     deleteArmed = true;
                     setStatus(StatusTone.WARNING, "Dangerous action armed. Press Delete Region again to confirm.");

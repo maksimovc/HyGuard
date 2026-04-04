@@ -175,6 +175,7 @@ public final class HyGuardConfig {
         public int maxPriority = 100;
         public int maxSelectionEditAmount = 500;
         public int maxRegionsPerPlayer = 64;
+        public int maxChildRegionsPerParent = 3;
         public int maxMembersPerRegion = 64;
 
         private void normalize() {
@@ -195,6 +196,9 @@ public final class HyGuardConfig {
             }
             if (maxRegionsPerPlayer < 1) {
                 maxRegionsPerPlayer = 1;
+            }
+            if (maxChildRegionsPerParent < 0) {
+                maxChildRegionsPerParent = 0;
             }
             if (maxMembersPerRegion < 1) {
                 maxMembersPerRegion = 1;
@@ -256,7 +260,10 @@ public final class HyGuardConfig {
         public String regionNotFound = "hyguard.message.region_not_found";
         public String regionAlreadyExists = "hyguard.message.region_already_exists";
         public String regionOverlapConflict = "hyguard.message.region_overlap_conflict";
+        public String regionHierarchyConflict = "hyguard.message.region_hierarchy_conflict";
         public String regionLimitReached = "hyguard.message.region_limit_reached";
+        public String regionChildLimitReached = "hyguard.message.region_child_limit_reached";
+        public String regionDeleteHasChildren = "hyguard.message.region_delete_has_children";
         public String regionListEmpty = "hyguard.message.region_list_empty";
         public String regionList = "hyguard.message.region_list";
         public String protectionDenied = "hyguard.message.protection_denied";
@@ -367,8 +374,17 @@ public final class HyGuardConfig {
             if (regionOverlapConflict == null) {
                 regionOverlapConflict = "hyguard.message.region_overlap_conflict";
             }
+            if (regionHierarchyConflict == null) {
+                regionHierarchyConflict = "hyguard.message.region_hierarchy_conflict";
+            }
             if (regionLimitReached == null) {
                 regionLimitReached = "hyguard.message.region_limit_reached";
+            }
+            if (regionChildLimitReached == null) {
+                regionChildLimitReached = "hyguard.message.region_child_limit_reached";
+            }
+            if (regionDeleteHasChildren == null) {
+                regionDeleteHasChildren = "hyguard.message.region_delete_has_children";
             }
             if (regionListEmpty == null) {
                 regionListEmpty = "hyguard.message.region_list_empty";

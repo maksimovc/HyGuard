@@ -66,6 +66,8 @@ final class RegionUiText {
             case MOB_DAMAGE_BLOCKS -> "Mob block damage";
             case MOB_GRIEF -> "Mob griefing";
             case ANIMAL_DAMAGE -> "Animal damage";
+            case ENTITY_DAMAGE -> "Entity damage";
+            case KNOCKBACK -> "Knockback";
             case FIRE_SPREAD -> "Fire spread";
             case TNT -> "TNT";
             case EXPLOSION -> "Explosions";
@@ -115,6 +117,8 @@ final class RegionUiText {
             case MOB_DAMAGE_BLOCKS -> "Controls whether mobs can damage blocks.";
             case MOB_GRIEF -> "Controls mob grief behavior such as terrain damage.";
             case ANIMAL_DAMAGE -> "Controls damage against animals and passive creatures.";
+            case ENTITY_DAMAGE -> "Controls damage against all non-player living entities, including NPCs, hostile mobs, and passive animals.";
+            case KNOCKBACK -> "Controls whether damage may apply knockback inside the region.";
             case FIRE_SPREAD -> "Controls whether fire spreads between blocks.";
             case TNT -> "Controls TNT ignition or usage.";
             case EXPLOSION -> "Controls whether explosions are allowed.";
@@ -161,6 +165,8 @@ final class RegionUiText {
             case MOB_DAMAGE_BLOCKS -> "mobs may damage blocks";
             case MOB_GRIEF -> "mobs may grief the world";
             case ANIMAL_DAMAGE -> "animals may be damaged";
+            case ENTITY_DAMAGE -> "non-player living entities may be damaged";
+            case KNOCKBACK -> "damage may apply knockback";
             case FIRE_SPREAD -> "fire may spread";
             case TNT -> "TNT use is permitted";
             case EXPLOSION -> "explosions are permitted";

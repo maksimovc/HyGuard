@@ -24,7 +24,7 @@ public final class HyGuardWandInteraction extends SimpleInstantInteraction {
             HyGuardWandInteraction.class,
             HyGuardWandInteraction::new,
             SimpleInstantInteraction.CODEC
-    ).documentation("Handles HyGuard wand primary selection and secondary clear input.").build();
+    ).documentation("Handles HyGuard wand primary selection and secondary clear or restore input.").build();
 
     public HyGuardWandInteraction(String id) {
         super(id);
@@ -52,7 +52,7 @@ public final class HyGuardWandInteraction extends SimpleInstantInteraction {
         }
 
         if (interactionType == InteractionType.Secondary || interactionType == InteractionType.Use) {
-            plugin.clearSelection(playerRef);
+            plugin.toggleSelectionClear(playerRef);
             fail(interactionContext);
             return;
         }

@@ -2,7 +2,6 @@ package dev.thenexusgates.hyguard.event;
 
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
-import com.hypixel.hytale.server.core.Message;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.Universe;
 import com.hypixel.hytale.server.core.universe.world.World;
@@ -29,6 +28,7 @@ import java.util.logging.Level;
 public final class PlayerMoveSystem {
 
     private static final long POLL_INTERVAL_MS = 250L;
+    private static final long PLAYER_STATE_STALE_AFTER_MS = 5000L;
 
     private final HyGuardPlugin plugin;
     private final ScheduledExecutorService scheduler;
@@ -80,18 +80,30 @@ public final class PlayerMoveSystem {
             return;
         }
 
-        Set<String> onlinePlayers = new HashSet<>();
+        long now = System.currentTimeMillis();
         for (PlayerRef playerRef : universe.getPlayers()) {
-            if (playerRef == null || playerRef.getUuid() == null || playerRef.getWorldUuid() == null || playerRef.getTransform() == null || playerRef.getTransform().getPosition() == null) {
+            if (playerRef == null || playerRef.getUuid() == null) {
                 continue;
             }
-            onlinePlayers.add(playerRef.getUuid().toString());
-            processPlayer(universe, playerRef);
+            String playerUuid = playerRef.getUuid().toString();
+            touchPlayer(playerUuid, now);
+            if (playerRef.getWorldUuid() == null || playerRef.getTransform() == null || playerRef.getTransform().getPosition() == null) {
+                continue;
+            }
+            processPlayer(universe, playerRef, now);
         }
-        states.keySet().removeIf(playerUuid -> !onlinePlayers.contains(playerUuid));
+        states.entrySet().removeIf(entry -> isStale(entry.getValue(), now));
     }
 
-    private void processPlayer(Universe universe, PlayerRef playerRef) {
+    private void touchPlayer(String playerUuid, long now) {
+        states.computeIfPresent(playerUuid, (ignored, state) -> state.withLastSeenAt(now));
+    }
+
+    private boolean isStale(PlayerState state, long now) {
+        return state == null || now - state.lastSeenAt() > PLAYER_STATE_STALE_AFTER_MS;
+    }
+
+    private void processPlayer(Universe universe, PlayerRef playerRef, long now) {
         World world = universe.getWorld(playerRef.getWorldUuid());
         if (world == null) {
             return;
@@ -101,40 +113,47 @@ public final class PlayerMoveSystem {
 
         String worldId = world.getName();
         String playerUuid = playerRef.getUuid().toString();
-        BlockPos currentPosition = new BlockPos(
-                (int) Math.floor(playerRef.getTransform().getPosition().getX()),
-                (int) Math.floor(playerRef.getTransform().getPosition().getY()),
-                (int) Math.floor(playerRef.getTransform().getPosition().getZ())
-        );
+        BlockPos currentPosition = plugin.resolvePlayerRegionPosition(playerRef);
+        List<BlockPos> currentPositions = plugin.resolvePlayerRegionPositions(playerRef);
+        if (currentPosition == null || currentPositions.isEmpty()) {
+            return;
+        }
+
+        List<Region> currentRegions = plugin.getRegionsAt(worldId, currentPositions);
+        List<String> currentRegionIds = currentRegions.stream().map(Region::getId).toList();
 
         PlayerState previousState = states.get(playerUuid);
-        if (previousState != null
-                && previousState.worldId().equalsIgnoreCase(worldId)
-                && previousState.position().equals(currentPosition)) {
+        if (previousState == null) {
+            applyRegionState(playerRef, worldId, currentPosition);
+            currentRegions.forEach(region -> messageRenderer.sendGreeting(playerRef, region));
+            states.put(playerUuid, PlayerState.create(worldId, currentPosition, currentRegionIds, now));
             return;
         }
 
-        List<Region> currentRegions = plugin.getRegionsAt(worldId, currentPosition);
-        List<String> currentRegionIds = currentRegions.stream().map(Region::getId).toList();
-        if (previousState == null || !previousState.worldId().equalsIgnoreCase(worldId)) {
-            Ref<EntityStore> entityRef = playerRef.getReference();
-            if (entityRef != null && entityRef.isValid()) {
-                plugin.applyRegionState(entityRef.getStore(), entityRef, playerRef, worldId, currentPosition);
-            }
-            states.put(playerUuid, new PlayerState(worldId, currentPosition, currentRegionIds));
+        if (!previousState.worldId().equalsIgnoreCase(worldId)) {
+            resolveRegions(previousState.announcedRegionIds()).forEach(region -> messageRenderer.sendFarewell(playerRef, region));
+            applyRegionState(playerRef, worldId, currentPosition);
+            currentRegions.forEach(region -> messageRenderer.sendGreeting(playerRef, region));
+            states.put(playerUuid, PlayerState.create(worldId, currentPosition, currentRegionIds, now));
             return;
         }
-        if (previousState.regionIds().equals(currentRegionIds)) {
-            states.put(playerUuid, new PlayerState(worldId, currentPosition, currentRegionIds));
+
+        boolean positionChanged = !previousState.position().equals(currentPosition);
+        boolean regionIdsChanged = !previousState.regionIds().equals(currentRegionIds);
+
+        if (!regionIdsChanged) {
+            if (positionChanged) {
+                states.put(playerUuid, previousState.withObservation(currentPosition, currentRegionIds, now));
+            }
             return;
         }
 
         List<Region> previousRegions = resolveRegions(previousState.regionIds());
         List<Region> exitedRegions = resolveExitedRegions(previousRegions, currentRegionIds);
-        if (!exitedRegions.isEmpty()) {
+        if (positionChanged && !exitedRegions.isEmpty()) {
             ProtectionResult exitResult = plugin.evaluate(playerRef, previousState.worldId(), previousState.position(), ProtectionAction.EXIT);
             if (!exitResult.allowed()) {
-                if (teleportBack(playerRef, previousState.position())) {
+                if (teleportBack(playerRef, previousState.safePositionOrFallback())) {
                     messageRenderer.sendExitDenied(playerRef, exitResult.region());
                 }
                 return;
@@ -142,30 +161,62 @@ public final class PlayerMoveSystem {
         }
 
         List<Region> enteredRegions = resolveEnteredRegions(currentRegions, previousState.regionIds());
-        if (!enteredRegions.isEmpty()) {
+        if (positionChanged && !enteredRegions.isEmpty()) {
             Region restrictedEntryRegion = resolveRestrictedEntryRegion(playerRef, enteredRegions);
             if (restrictedEntryRegion != null) {
-                if (teleportBack(playerRef, previousState.position())) {
+                if (teleportBack(playerRef, previousState.safePositionOrFallback())) {
                     messageRenderer.sendEntryDenied(playerRef, restrictedEntryRegion);
                 }
                 return;
             }
             ProtectionResult entryResult = plugin.evaluate(playerRef, worldId, currentPosition, ProtectionAction.ENTRY);
             if (!entryResult.allowed()) {
-                if (teleportBack(playerRef, previousState.position())) {
+                if (teleportBack(playerRef, previousState.safePositionOrFallback())) {
                     messageRenderer.sendEntryDenied(playerRef, entryResult.region());
                 }
                 return;
             }
         }
 
+        applyRegionState(playerRef, worldId, currentPosition);
+
+        PlayerState nextState = previousState.withObservation(currentPosition, currentRegionIds, now);
+        nextState = syncAnnouncements(playerRef, worldId, currentRegions, currentRegionIds, nextState);
+        states.put(playerUuid, nextState);
+    }
+
+    private PlayerState syncAnnouncements(PlayerRef playerRef,
+                                          String worldId,
+                                          List<Region> currentRegions,
+                                          List<String> currentRegionIds,
+                                          PlayerState state) {
+        if (state == null) {
+            return PlayerState.create(worldId, null, currentRegionIds, System.currentTimeMillis());
+        }
+
+        if (!state.worldId().equalsIgnoreCase(worldId)) {
+            resolveRegions(state.announcedRegionIds()).forEach(region -> messageRenderer.sendFarewell(playerRef, region));
+            currentRegions.forEach(region -> messageRenderer.sendGreeting(playerRef, region));
+            return state.withAnnouncements(currentRegionIds);
+        }
+
+        if (state.announcedRegionIds().equals(currentRegionIds)) {
+            return state;
+        }
+
+        List<Region> announcedRegions = resolveRegions(state.announcedRegionIds());
+        List<Region> exitedRegions = resolveExitedRegions(announcedRegions, currentRegionIds);
+        List<Region> enteredRegions = resolveEnteredRegions(currentRegions, state.announcedRegionIds());
         exitedRegions.forEach(region -> messageRenderer.sendFarewell(playerRef, region));
         enteredRegions.forEach(region -> messageRenderer.sendGreeting(playerRef, region));
+        return state.withAnnouncements(currentRegionIds);
+    }
+
+    private void applyRegionState(PlayerRef playerRef, String worldId, BlockPos currentPosition) {
         Ref<EntityStore> entityRef = playerRef.getReference();
         if (entityRef != null && entityRef.isValid()) {
             plugin.applyRegionState(entityRef.getStore(), entityRef, playerRef, worldId, currentPosition);
         }
-        states.put(playerUuid, new PlayerState(worldId, currentPosition, currentRegionIds));
     }
 
     private List<Region> resolveRegions(List<String> regionIds) {
@@ -222,6 +273,38 @@ public final class PlayerMoveSystem {
         return exited;
     }
 
-    private record PlayerState(String worldId, BlockPos position, List<String> regionIds) {
+    private record PlayerState(String worldId,
+                               BlockPos position,
+                               BlockPos safePosition,
+                               List<String> regionIds,
+                               List<String> announcedRegionIds,
+                               long lastSeenAt) {
+
+        private static PlayerState create(String worldId, BlockPos position, List<String> regionIds, long lastSeenAt) {
+            BlockPos storedPosition = position == null ? null : position.copy();
+            List<String> storedRegionIds = List.copyOf(regionIds);
+            return new PlayerState(worldId, storedPosition, storedPosition == null ? null : storedPosition.copy(), storedRegionIds, storedRegionIds, lastSeenAt);
+        }
+
+        private PlayerState withObservation(BlockPos updatedPosition, List<String> updatedRegionIds, long updatedLastSeenAt) {
+            BlockPos storedPosition = updatedPosition == null ? null : updatedPosition.copy();
+            BlockPos nextSafePosition = storedPosition == null ? safePositionOrFallback() : storedPosition.copy();
+            return new PlayerState(worldId, storedPosition, nextSafePosition, List.copyOf(updatedRegionIds), announcedRegionIds, updatedLastSeenAt);
+        }
+
+        private PlayerState withAnnouncements(List<String> updatedAnnouncedRegionIds) {
+            return new PlayerState(worldId, position, safePosition, regionIds, List.copyOf(updatedAnnouncedRegionIds), lastSeenAt);
+        }
+
+        private PlayerState withLastSeenAt(long updatedLastSeenAt) {
+            return new PlayerState(worldId, position, safePosition, regionIds, announcedRegionIds, updatedLastSeenAt);
+        }
+
+        private BlockPos safePositionOrFallback() {
+            if (safePosition != null) {
+                return safePosition.copy();
+            }
+            return position == null ? null : position.copy();
+        }
     }
 }

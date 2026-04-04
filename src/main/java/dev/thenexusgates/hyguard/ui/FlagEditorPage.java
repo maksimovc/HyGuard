@@ -505,17 +505,13 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
             case BLOCKS -> List.of(
                     RegionFlag.BLOCK_BREAK,
                     RegionFlag.BLOCK_PLACE,
-                    RegionFlag.BLOCK_INTERACT,
-                    RegionFlag.BLOCK_TRAMPLE,
-                    RegionFlag.BLOCK_DECAY,
-                    RegionFlag.BLOCK_SPREAD,
-                    RegionFlag.BLOCK_FADE,
-                    RegionFlag.BLOCK_FORM
+                    RegionFlag.BLOCK_INTERACT
             );
             case PLAYERS -> List.of(
                     RegionFlag.PVP,
                     RegionFlag.PLAYER_DAMAGE,
                     RegionFlag.PLAYER_FALL_DAMAGE,
+                    RegionFlag.KNOCKBACK,
                     RegionFlag.PLAYER_HUNGER,
                     RegionFlag.PLAYER_ITEM_DROP,
                     RegionFlag.PLAYER_ITEM_PICKUP,
@@ -523,20 +519,16 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
             );
             case MOBS -> List.of(
                     RegionFlag.MOB_DAMAGE_PLAYERS,
+                    RegionFlag.ENTITY_DAMAGE,
                     RegionFlag.MOB_SPAWN,
                     RegionFlag.MOB_SPAWN_HOSTILE,
-                    RegionFlag.MOB_SPAWN_PASSIVE,
-                    RegionFlag.MOB_DAMAGE_BLOCKS,
-                    RegionFlag.MOB_GRIEF,
-                    RegionFlag.ANIMAL_DAMAGE
+                    RegionFlag.MOB_SPAWN_PASSIVE
             );
             case ENVIRONMENT -> List.of(
                     RegionFlag.FIRE_SPREAD,
-                    RegionFlag.TNT,
                     RegionFlag.EXPLOSION,
                     RegionFlag.EXPLOSION_BLOCK_DAMAGE,
-                    RegionFlag.LIQUID_FLOW,
-                    RegionFlag.LIGHTNING
+                    RegionFlag.LIQUID_FLOW
             );
             case ENTRY_EXIT -> List.of(
                     RegionFlag.ENTRY,

@@ -1,38 +1,53 @@
 $Hg = "HyGuardShared.ui";
 
-Button {
+Group {
   Anchor: (Left: 4, Right: 4, Height: 104, Bottom: 10);
-  Padding: (Top: 14, Bottom: 14, Left: 16, Right: 18);
-  Style: $Hg.@HgCardButtonStyle;
 
-  Group {
-    Anchor: (Top: 0, Left: 0, Width: 4, Bottom: 0);
-    Background: $Hg.@HgPrimary;
+  Button #OpenRegionButton {
+    Anchor: (Left: 0, Right: 188, Height: 104, Top: 0);
+    Padding: (Top: 14, Bottom: 14, Left: 16, Right: 18);
+    Style: $Hg.@HgCardButtonStyle;
+
+    Group {
+      Anchor: (Top: 0, Left: 0, Width: 4, Bottom: 0);
+      Background: $Hg.@HgPrimary;
+    }
+
+    Label #RowTitle {
+      Anchor: (Top: 0, Left: 16, Right: 132, Height: 22);
+      Style: (FontSize: 15, RenderBold: true, TextColor: #eff7ff);
+    }
+
+    Label #RowHint {
+      Anchor: (Top: 2, Right: 34, Width: 94, Height: 18);
+      Style: (HorizontalAlignment: End, FontSize: 11, RenderBold: true, TextColor: #b4dfff, RenderUppercase: true);
+    }
+
+    Label {
+      Text: ">";
+      Anchor: (Top: 0, Right: 0, Width: 24, Height: 22);
+      Style: (HorizontalAlignment: Center, VerticalAlignment: Center, FontSize: 16, RenderBold: true, TextColor: #d5ebfb);
+    }
+
+    Label #RowSubtitle {
+      Anchor: (Top: 30, Left: 16, Right: 0, Height: 18);
+      Style: (FontSize: 13, TextColor: #ffffff);
+    }
+
+    Label #RowDetail {
+      Anchor: (Top: 54, Left: 16, Right: 0, Height: 28);
+      Style: (FontSize: 12, TextColor: #9db8ca, Wrap: true);
+    }
   }
 
-  Label #RowTitle {
-    Anchor: (Top: 0, Left: 16, Right: 160, Height: 22);
-    Style: (FontSize: 15, RenderBold: true, TextColor: #eff7ff);
-  }
+  Button #ChildrenButton {
+    Anchor: (Top: 32, Right: 0, Width: 172, Height: 40);
+    Style: $Hg.@HgPrimaryButtonStyle;
+    Visible: false;
 
-  Label #RowHint {
-    Anchor: (Top: 2, Right: 34, Width: 120, Height: 18);
-    Style: (HorizontalAlignment: End, FontSize: 11, RenderBold: true, TextColor: #b4dfff, RenderUppercase: true);
-  }
-
-  Label {
-    Text: ">";
-    Anchor: (Top: 0, Right: 0, Width: 24, Height: 22);
-    Style: (HorizontalAlignment: Center, VerticalAlignment: Center, FontSize: 16, RenderBold: true, TextColor: #d5ebfb);
-  }
-
-  Label #RowSubtitle {
-    Anchor: (Top: 30, Left: 16, Right: 0, Height: 18);
-    Style: (FontSize: 13, TextColor: #ffffff);
-  }
-
-  Label #RowDetail {
-    Anchor: (Top: 54, Left: 16, Right: 0, Height: 28);
-    Style: (FontSize: 12, TextColor: #9db8ca, Wrap: true);
+    Label #ChildrenButtonText {
+      Anchor: (Full: 0);
+      Style: (FontSize: 12, TextColor: #ffffff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center);
+    }
   }
 }

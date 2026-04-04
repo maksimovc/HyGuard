@@ -12,6 +12,7 @@ public enum ProtectionAction {
     PLAYER_ITEM_DROP(RegionFlag.PLAYER_ITEM_DROP),
     PLAYER_ITEM_PICKUP(RegionFlag.PLAYER_ITEM_PICKUP),
     MOB_DAMAGE_PLAYERS(RegionFlag.MOB_DAMAGE_PLAYERS),
+    ENTITY_DAMAGE(RegionFlag.ENTITY_DAMAGE),
     ENTRY(RegionFlag.ENTRY),
     EXIT(RegionFlag.EXIT);
 

@@ -6,15 +6,27 @@ $C.@PageOverlay {
     Anchor: (Width: 1000, Height: 680);
     Background: $Hg.@HgPanelBackground;
 
+    Button #BackButton {
+      Anchor: (Top: 24, Left: 28, Width: 102, Height: 42);
+      Style: $Hg.@HgSecondaryButtonStyle;
+      Visible: false;
+
+      Label {
+        Text: "Back";
+        Style: $Hg.@HgButtonLabelStyle;
+        Anchor: (Full: 0);
+      }
+    }
+
     Label {
       Text: "HyGuard Regions";
       Style: $Hg.@HgTitleStyle;
-      Anchor: (Top: 28, Left: 28, Height: 26);
+      Anchor: (Top: 28, Left: 148, Height: 26);
     }
 
     Label #PageTitle {
       Style: $Hg.@HgMetaStyle;
-      Anchor: (Top: 60, Left: 28, Right: 90, Height: 18);
+      Anchor: (Top: 60, Left: 148, Right: 90, Height: 18);
     }
 
     Button #CloseIconButton {

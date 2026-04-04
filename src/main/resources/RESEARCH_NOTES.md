@@ -8,7 +8,7 @@ Implemented on verified public APIs:
 
 - Region storage with cached lookup, async JSON saves, corrupt-file skip logging, and atomic-move fallback.
 - Cuboid selections through block break and block use wand interception.
-- Selection visualization through `ParticleUtil.spawnParticleEffect(...)` using verified public particle-system asset ids.
+- Selection visualization through viewer-only `DisplayDebug`/`ClearDebugShapes` packets using built-in debug shapes.
 - Region browser, detail, member manager, and flag editor pages through `InteractiveCustomUIPage`.
 - Disconnect cleanup through `PlayerDisconnectEvent`, including selection, bypass, move-state, and visual subscription cleanup.
 - Runtime protection for block break, block place, block interact, player damage, PVP, fall damage, mob damage to players, item drop, item pickup, entry, exit, `ENTRY_PLAYERS`, and `INVINCIBLE`.
@@ -27,7 +27,6 @@ Implemented on verified public APIs:
 - item drop and pickup ECS hooks used by `HyGuardItemSystem`
 - `PlayerDisconnectEvent`
 - `InteractiveCustomUIPage<T>`
-- `ParticleUtil.spawnParticleEffect(...)`
 - `MovementManager` and `MovementSettings`
 - `Player.setGameMode(...)`
 
@@ -61,12 +60,11 @@ Other flags are still stored and editable but remain unimplemented by this mod b
 - `TIME_LOCK`
 - `SPAWN_LOCATION`
 
-## Particle Notes
+## Selection Renderer Notes
 
-- Public particle emission is available through `ParticleUtil`.
-- Verified particle system ids in workspace assets include `Block_Hit_Fail`, `Block_Hit_Stone`, and `Block_Hit_Metal`.
-- HyGuard now uses distinct particle systems for valid selections, conflict selections, and region borders.
-- Exact public RGB tint control was not confirmed during this audit, so the visual layer uses separate asset ids instead of true color parameters.
+- Survival-safe selection rendering is now driven by viewer-only `DisplayDebug` packets plus `ClearDebugShapes`.
+- The active HyGuard selection style uses built-in debug shapes (`Cube`, `Cylinder`, `Sphere`) instead of block overlay assets or particle emission.
+- This renderer supports static territory framing with different palettes for valid vs overlap-conflict selections.
 
 ## Explosion And Natural Update Notes
 
@@ -92,27 +90,6 @@ Other flags are still stored and editable but remain unimplemented by this mod b
 - ECS systems are registered through `getEntityStoreRegistry().registerSystem(...)`.
 - Custom `.ui` pages live under `src/main/resources/Common/UI/Custom/Pages/`.
 - Windows Gradle invocation should use `call gradlew.bat ...` from `cmd.exe`.
-- `com/hypixel/hytale/server/core/prefab/selection/SelectionProvider.class`
-- `com/hypixel/hytale/server/core/prefab/selection/standard/BlockSelection.class`
-- `com/hypixel/hytale/protocol/packets/buildertools/BuilderToolSelectionUpdate.class`
-- `com/hypixel/hytale/protocol/packets/buildertools/BuilderToolSelectionTransform.class`
-- `com/hypixel/hytale/protocol/packets/interface_/EditorSelection.class`
-- `com/hypixel/hytale/builtin/buildertools/snapshot/SelectionSnapshot.class`
-- `com/hypixel/hytale/builtin/buildertools/snapshot/BlockSelectionSnapshot.class`
-
-Community docs also confirm that Creative Mode has a Selection Tool for transforming and extruding selections:
-
-- `Hytale-Modding-Tutorials/content/docs/en/established-information/gameplay/creative.mdx`
-
-#### Selection conclusion
-
-The built-in system clearly exists, but this audit did not find a stable, documented plugin-facing API showing how server plugins are supposed to create, attach, or persist those editor selections for arbitrary gameplay items.
-
-Decision:
-
-- Do not depend on internal buildertool packets or prefab-selection internals for the first implementation.
-- Reuse the concept of cuboid block selection, but implement HyGuard's own `SelectionSession` and visualizer.
-- Treat built-in selection classes as research references only unless a stable plugin hook becomes available later.
 
 ### Position, vectors, and block access
 
@@ -380,36 +357,35 @@ Conclusion:
 - `setPosition(...)` also exists, but `teleportPosition(...)` is the better semantic match for `/hg tp`.
 - `NexusTP` is not a same-world teleport example; it uses `PlayerRef.referToServer(host, port)` for inter-server transfer.
 
-### A3. Particle / visual API
+### A3. Debug Shape / visual API
 
-No public server manager class named either of the following was found in the current runtime:
+Verified client-bound debug-visual packet path:
 
-- `com.hypixel.hytale.server.core.world.particle.ParticleManager`
-- `com.hypixel.hytale.server.core.world.effect.EffectManager`
+- `com.hypixel.hytale.protocol.packets.player.DisplayDebug`
+- `com.hypixel.hytale.protocol.packets.player.ClearDebugShapes`
+- `com.hypixel.hytale.protocol.DebugShape`
+- `com.hypixel.hytale.protocol.DebugFlags`
 
-Relevant classes that do exist in the runtime:
+Verified usable shapes from the current runtime:
 
-- `com/hypixel/hytale/server/core/asset/type/model/config/ModelParticle.class`
-- `com/hypixel/hytale/server/core/asset/type/particle/config/WorldParticle.class`
-- `com/hypixel/hytale/protocol/packets/entities/SpawnModelParticles.class`
+- `Sphere`
+- `Cylinder`
+- `Cone`
+- `Cube`
+- `Frustum`
+- `Sector`
+- `Disc`
 
-Verified packet constructor from `javap`:
+Verified debug flags from the current runtime:
 
-- `public com.hypixel.hytale.protocol.packets.entities.SpawnModelParticles(int, com.hypixel.hytale.protocol.ModelParticle[])`
-
-Tutorial docs confirm particle concepts only at the interaction-asset layer:
-
-- `InteractionEffects` includes `ModelParticles` and `WorldParticles`
-- `DamageEffects` also includes `ModelParticles` and `WorldParticles`
-
-Observed in:
-
-- `Hytale-Modding-Tutorials/content/docs/en/server/interaction-reference.mdx`
+- `Fade`
+- `NoWireframe`
+- `NoSolid`
 
 Conclusion:
 
-- The runtime exposes particle-related asset and packet classes, but this audit did not find a stable public plugin API for rendering arbitrary world-space particles to one player.
-- Selection and border visualizers should therefore be implemented as stubs or adapter classes first, with comments noting that a safe server-side emission hook was not verified in API `0.2.14`.
+- `DisplayDebug` is the stable viewer-only render path now used by HyGuard selection visuals.
+- No `NoDepthTest` / `AlwaysVisible` style flag was found, so debug shapes still respect world occlusion and cannot be forced to render through blocks with the current API.
 
 ### A4. Scheduler / periodic tasks
 

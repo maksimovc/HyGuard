@@ -64,7 +64,7 @@ com.yourname.hyguard/
 │   ├── selection/
 │   │   ├── SelectionSession.java    # Сесія виділення для конкретного гравця
 │   │   ├── SelectionPoint.java      # Один кут виділення
-│   │   ├── SelectionVisualizer.java # Відображення виділення (частинки/рамка)
+│   │   ├── SelectionVisualizer.java # Відображення виділення через viewer-only debug shapes
 │   │   └── WandItem.java            # Кастомна "wand" палиця
 │   ├── protection/
 │   │   ├── ProtectionEngine.java    # Головний рушій перевірки дозволів
@@ -114,10 +114,9 @@ com.yourname.hyguard/
 │   ├── WandInteractionListener.java  # Обробка кліків паличкою
 │   └── RegionEventPublisher.java    # Кастомні події: RegionEnterEvent, RegionExitEvent
 ├── visual/
-│   ├── RegionBorderVisualizer.java  # Відображення меж регіону (частинки/блоки)
-│   ├── SelectionParticleEffect.java # Ефект виділення паличкою
+│   ├── SelectionVisualizer.java    # Territory-frame preview для поточного виділення
 │   ├── EnterExitMessageRenderer.java # Повідомлення при вході/виході
-│   └── VisualScheduler.java         # Оновлення візуалів по тіку
+│   └── VisualScheduler.java         # Shared scheduler для selection visual redraw
 ├── config/
 │   ├── HyGuardConfig.java       # Головна конфігурація
 │   ├── DefaultFlagsConfig.java      # Дефолтні значення прапорів
@@ -232,19 +231,18 @@ VISITOR    — явно заборонений (override DENY для цього 
 
 ### Логіка виділення:
 - Гравець отримує wand через `/hg wand` — це кастомний предмет (паличка/кристал/інше — вибери найбільш відповідний CustomItem з API)
-- **ЛКМ по блоку** → встановлює Точку 1 (мінімальний кут), відображається частинками
-- **ПКМ по блоку** → встановлює Точку 2 (максимальний кут), відображається частинками
-- Після встановлення обох точок — автоматично малюється **3D рамка виділення** (wireframe куб з частинок або ліній, якщо API підтримує)
+- **ЛКМ по блоку** → встановлює Точку 1 (мінімальний кут), після чого оновлюється viewer-only preview
+- **ПКМ по блоку** → встановлює Точку 2 (максимальний кут), після чого оновлюється viewer-only preview
+- Після встановлення обох точок — автоматично малюється **3D territory frame** через debug shapes
 - Виділення **зберігається в SelectionSession** прив'язаній до гравця (не зникає при смерті, зберігається до ребуту або явного очищення)
 - `/hg create <name>` — перетворює поточне виділення на регіон
 
 ### SelectionVisualizer:
-- Дослідити чи Hytale API має вбудований selection/highlight API (такий є в creative tools — адаптувати)
-- Якщо є — використати напряму
-- Якщо немає — реалізувати через particle effects по краях кубоїда
-- Рамка має оновлюватись кожні N тіків (налаштовується, дефолт ~5 тіків = ~0.25с)
-- При великих виділеннях — малювати тільки ребра (12 ребер куба), не всю поверхню
-- Колір частинок: зелений при валідному, червоний якщо перетинається з чужим регіоном, жовтий якщо частково перетинається
+- Використовувати viewer-only `DisplayDebug`/`ClearDebugShapes`, а не creative selection tools
+- Рендерити статичну territory-style рамку built-in shape'ами (`Cube`, `Cylinder`, `Sphere`)
+- Використовувати один shared refresh task замість окремого task на кожного гравця
+- Палітра: синьо-помаранчева для валідного selection, червоно-помаранчева для overlap conflict
+- Не покладатися на particle effects або block overlay assets для survival selection preview
 
 ---
 
@@ -396,10 +394,8 @@ data/
   "schemaVersion": 1,
   "general": {
     "wandItemId": "auto",
-    "wandParticleColor": "#00FF88",
-    "selectionUpdateIntervalTicks": 5,
-    "showBorderOnEntry": true,
-    "borderDisplayDurationSeconds": 3,
+    "selectionRefreshMillis": 900,
+    "showEnterExitMessages": true,
     "bypassPermission": "hyguard.bypass",
     "adminPermission": "hyguard.admin"
   },
@@ -478,8 +474,8 @@ data/
 6. **Команди create/delete/info** — мінімальний робочий функціонал
 7. **ProtectionEngine** — базова перевірка block break/place
 8. **Event listeners** — підключити ProtectionEngine до подій гри
-9. **SelectionVisualizer** — частинки/рамка виділення
-10. **RegionBorderVisualizer** — відображення меж при вході
+9. **SelectionVisualizer** — viewer-only debug-shape preview виділення
+10. **EnterExitMessageRenderer** — відображення повідомлень при вході
 11. **Повний список команд**
 12. **GUI екрани**
 13. **Повний список прапорів**

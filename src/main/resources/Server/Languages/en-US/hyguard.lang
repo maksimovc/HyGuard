@@ -2,6 +2,7 @@ message.no_permission=§cYou do not have permission for that action.
 message.wand_given=§aWand added to your inventory.
 message.selection_point_one_set=§bSelection point 1 set at §f{pos}§b.
 message.selection_point_two_set=§bSelection point 2 set at §f{pos}§b. Size: §f{size}§b.
+message.selection_cleared=§eSelection cleared.
 message.selection_incomplete=§eSet both selection points first.
 message.selection_loaded=§aSelection loaded from region §f{name}§a.
 message.global_selection_unsupported=§eGlobal regions do not use two-point bounds.
@@ -101,4 +102,4 @@ help.permission.admin=Players with hyguard.admin.
 help.permission.bypass_or_admin=Players with hyguard.bypass or hyguard.admin.
 
 items.hyguard_wand.name=HyGuard Selection Wand
-items.hyguard_wand.description=Left click cycles selection point 1, point 2, point 1, point 2.
+items.hyguard_wand.description=Left click sets selection points. Right click clears the current selection.

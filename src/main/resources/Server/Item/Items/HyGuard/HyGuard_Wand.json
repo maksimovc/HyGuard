@@ -1,12 +1,35 @@
 {
   "Id": "HyGuard_Wand",
   "MaxStack": 1,
-  "Quality": "Tool",
+  "Quality": "Common",
   "Icon": "Icons/ItemsGenerated/HyGuard/hyguard_wand.png",
   "PlayerAnimationsId": "Item",
   "Categories": [
     "HyGuard.Tools"
   ],
+  "Interactions": {
+    "Primary": {
+      "Interactions": [
+        {
+          "Type": "HyGuard_WandInteraction"
+        }
+      ]
+    },
+    "Secondary": {
+      "Interactions": [
+        {
+          "Type": "HyGuard_WandInteraction"
+        }
+      ]
+    },
+    "Use": {
+      "Interactions": [
+        {
+          "Type": "HyGuard_WandInteraction"
+        }
+      ]
+    }
+  },
   "Texture": "Items/Block_Spawner_Block_Large_Texture.png",
   "Model": "Items/Block_Spawner_Block.blockymodel",
   "Scale": 0.6,

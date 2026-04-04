@@ -2,6 +2,7 @@ message.no_permission=§cУ вас немає прав для цієї дії.
 message.wand_given=§aЖезл додано у ваш інвентар.
 message.selection_point_one_set=§bТочку виділення 1 встановлено на §f{pos}§b.
 message.selection_point_two_set=§bТочку виділення 2 встановлено на §f{pos}§b. Розмір: §f{size}§b.
+message.selection_cleared=§eВиділення очищено.
 message.selection_incomplete=§eСпочатку встановіть обидві точки виділення.
 message.selection_loaded=§aВиділення завантажено з регіону §f{name}§a.
 message.global_selection_unsupported=§eГлобальні регіони не використовують двоточкові межі.
@@ -101,4 +102,4 @@ help.permission.admin=Гравці з hyguard.admin.
 help.permission.bypass_or_admin=Гравці з hyguard.bypass або hyguard.admin.
 
 items.hyguard_wand.name=Жезл виділення HyGuard
-items.hyguard_wand.description=Лівий клік циклічно перемикає точку 1, точку 2, точку 1, точку 2.
+items.hyguard_wand.description=Лівий клік встановлює точки виділення. Правий клік очищає поточне виділення.

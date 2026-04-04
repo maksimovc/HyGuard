@@ -7,6 +7,7 @@ import com.hypixel.hytale.component.Store;
 import com.hypixel.hytale.math.vector.Transform;
 import com.hypixel.hytale.math.vector.Vector3d;
 import com.hypixel.hytale.protocol.GameMode;
+import com.hypixel.hytale.server.core.asset.type.item.config.Item;
 import com.hypixel.hytale.server.core.HytaleServer;
 import com.hypixel.hytale.server.core.Message;
 import com.hypixel.hytale.server.core.NameMatching;
@@ -15,6 +16,7 @@ import com.hypixel.hytale.server.core.entity.entities.Player;
 import com.hypixel.hytale.server.core.entity.entities.player.movement.MovementManager;
 import com.hypixel.hytale.server.core.inventory.ItemStack;
 import com.hypixel.hytale.server.core.modules.entity.EntityModule;
+import com.hypixel.hytale.server.core.modules.interaction.interaction.config.Interaction;
 import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
 import com.hypixel.hytale.server.core.modules.entity.teleport.Teleport;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
@@ -48,6 +50,7 @@ import dev.thenexusgates.hyguard.event.HyGuardMobSpawnSystem;
 import dev.thenexusgates.hyguard.event.PlayerMoveSystem;
 import dev.thenexusgates.hyguard.event.HyGuardPlaceBlockSystem;
 import dev.thenexusgates.hyguard.event.HyGuardUseBlockSystem;
+import dev.thenexusgates.hyguard.interaction.HyGuardWandInteraction;
 import dev.thenexusgates.hyguard.i18n.HyGuardText;
 import dev.thenexusgates.hyguard.permission.HyGuardPermissions;
 import dev.thenexusgates.hyguard.sound.HyGuardSounds;
@@ -61,9 +64,6 @@ import dev.thenexusgates.hyguard.ui.MemberManagerPage;
 import dev.thenexusgates.hyguard.ui.RegionBrowserPage;
 import dev.thenexusgates.hyguard.ui.RegionDetailPage;
 import dev.thenexusgates.hyguard.visual.EnterExitMessageRenderer;
-import dev.thenexusgates.hyguard.visual.ParticleAdapter;
-import dev.thenexusgates.hyguard.visual.ParticleUtilParticleAdapter;
-import dev.thenexusgates.hyguard.visual.RegionBorderVisualizer;
 import dev.thenexusgates.hyguard.visual.SelectionVisualizer;
 import dev.thenexusgates.hyguard.visual.VisualScheduler;
 import dev.thenexusgates.hyguard.util.BlockPos;
@@ -88,6 +88,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public final class HyGuardPlugin extends JavaPlugin {
+
+    private static volatile HyGuardPlugin instance;
 
     public enum RegionUpdateResult {
         SUCCESS,
@@ -125,7 +127,6 @@ public final class HyGuardPlugin extends JavaPlugin {
     private VisualScheduler visualScheduler;
     private EnterExitMessageRenderer enterExitMessageRenderer;
     private SelectionVisualizer selectionVisualizer;
-    private RegionBorderVisualizer regionBorderVisualizer;
     private PlayerMoveSystem playerMoveSystem;
     private DisconnectCleanupSystem disconnectCleanupSystem;
     private final ConcurrentHashMap<String, WandLeftClickState> recentWandLeftClicks = new ConcurrentHashMap<>();
@@ -136,6 +137,7 @@ public final class HyGuardPlugin extends JavaPlugin {
 
     @Override
     protected void setup() {
+        instance = this;
         assetPack = HyGuardAssetPack.initialize(STORAGE_LOGGER);
         dataDirectory = assetPack.getDataRoot();
         configPath = dataDirectory.resolve("config.json");
@@ -156,12 +158,15 @@ public final class HyGuardPlugin extends JavaPlugin {
         backupManager.start(config.general.autoBackupIntervalMinutes, config.general.maxBackups);
         visualScheduler = new VisualScheduler(HytaleServer.SCHEDULED_EXECUTOR);
         enterExitMessageRenderer = new EnterExitMessageRenderer(this);
-        ParticleAdapter particleAdapter = new ParticleUtilParticleAdapter();
-        selectionVisualizer = new SelectionVisualizer(particleAdapter, visualScheduler);
-        regionBorderVisualizer = new RegionBorderVisualizer(particleAdapter, visualScheduler);
+        selectionVisualizer = new SelectionVisualizer(visualScheduler);
         playerMoveSystem = new PlayerMoveSystem(this, HytaleServer.SCHEDULED_EXECUTOR, enterExitMessageRenderer);
         disconnectCleanupSystem = new DisconnectCleanupSystem(this);
 
+        getCodecRegistry(Interaction.CODEC).register(
+            HyGuardWandInteraction.ID,
+            HyGuardWandInteraction.class,
+            HyGuardWandInteraction.CODEC
+        );
         getCommandRegistry().registerCommand(new GuardCommand(this));
         getEventRegistry().registerGlobal(com.hypixel.hytale.server.core.event.events.player.PlayerDisconnectEvent.class, disconnectCleanupSystem::handle);
 
@@ -185,7 +190,7 @@ public final class HyGuardPlugin extends JavaPlugin {
             .filter(worldId -> worldId != null && !worldId.isBlank())
             .distinct()
             .count();
-        getLogger().at(Level.INFO).log("[HyGuard] Enabled. Regions loaded=%s worlds=%s particles=%s dataRoot=%s packRoot=%s",
+        getLogger().at(Level.INFO).log("[HyGuard] Enabled. Regions loaded=%s worlds=%s selectionVisuals=%s dataRoot=%s packRoot=%s",
                 regionCache.allRegions().size(),
                 worldCount,
                 selectionVisualizer.isSupported(),
@@ -205,13 +210,23 @@ public final class HyGuardPlugin extends JavaPlugin {
             backupManager.stop();
             backupManager.shutdown();
         }
+        if (selectionVisualizer != null) {
+            selectionVisualizer.shutdown();
+        }
         if (visualScheduler != null) {
             visualScheduler.cancelAll();
         }
         if (playerMoveSystem != null) {
             playerMoveSystem.stop();
         }
+        if (instance == this) {
+            instance = null;
+        }
         getLogger().at(Level.INFO).log("[HyGuard] Shutdown complete.");
+    }
+
+    public static HyGuardPlugin getInstance() {
+        return instance;
     }
 
     public HyGuardConfig getConfigSnapshot() {
@@ -530,10 +545,15 @@ public final class HyGuardPlugin extends JavaPlugin {
         }
 
         String playerUuid = playerRef.getUuid().toString();
+        SelectionSession session = selectionService.get(playerUuid);
         selectionService.clear(playerUuid);
         recentWandLeftClicks.remove(playerUuid);
         if (selectionVisualizer != null) {
             selectionVisualizer.clearPlayer(playerUuid);
+        }
+        if (session != null && session.hasAnyPoint()) {
+            send(playerRef, config.messages.selectionCleared);
+            sounds.play(playerRef, HyGuardSounds.Cue.DELETE);
         }
     }
 
@@ -788,16 +808,16 @@ public final class HyGuardPlugin extends JavaPlugin {
         return selectionVisualizer;
     }
 
-    public RegionBorderVisualizer getRegionBorderVisualizer() {
-        return regionBorderVisualizer;
-    }
-
     public boolean isWand(Player player) {
         if (player == null || player.getInventory() == null) {
             return false;
         }
         ItemStack active = player.getInventory().getActiveHotbarItem();
         return isWand(active);
+    }
+
+    public boolean isWand(Item item) {
+        return item != null && WandItem.matches(item.getId(), config.general.wandItemId);
     }
 
     public boolean isWand(ItemStack itemStack) {

@@ -47,8 +47,6 @@ public final class HyGuardUseBlockSystem extends EntityEventSystem<EntityStore, 
         }
 
         if (plugin.isWand(player)) {
-            event.setCancelled(true);
-            plugin.clearSelection(playerRef);
             return;
         }
 

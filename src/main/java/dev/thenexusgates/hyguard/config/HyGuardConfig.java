@@ -241,6 +241,7 @@ public final class HyGuardConfig {
         public String wandGiven = "hyguard.message.wand_given";
         public String selectionPointOneSet = "hyguard.message.selection_point_one_set";
         public String selectionPointTwoSet = "hyguard.message.selection_point_two_set";
+        public String selectionCleared = "hyguard.message.selection_cleared";
         public String selectionIncomplete = "hyguard.message.selection_incomplete";
         public String selectionLoaded = "hyguard.message.selection_loaded";
         public String globalSelectionUnsupported = "hyguard.message.global_selection_unsupported";
@@ -320,6 +321,9 @@ public final class HyGuardConfig {
             }
             if (selectionPointTwoSet == null) {
                 selectionPointTwoSet = "hyguard.message.selection_point_two_set";
+            }
+            if (selectionCleared == null) {
+                selectionCleared = "hyguard.message.selection_cleared";
             }
             if (selectionIncomplete == null) {
                 selectionIncomplete = "hyguard.message.selection_incomplete";

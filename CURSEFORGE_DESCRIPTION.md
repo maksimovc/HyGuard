@@ -131,7 +131,7 @@ Server-owned cuboids are useful for:
 ## Installation
 
 1. Download the latest HyGuard release.
-2. Put `HyGuard-1.0.0.jar` into your server world's `mods/` folder.
+2. Put `HyGuard-1.0.9.jar` into your server world's `mods/` folder.
 3. Start the world/server once.
 4. Let HyGuard generate its runtime data.
 5. Configure permissions and flags as needed.

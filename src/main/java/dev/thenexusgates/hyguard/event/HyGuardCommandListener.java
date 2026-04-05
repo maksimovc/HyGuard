@@ -30,7 +30,12 @@ public final class HyGuardCommandListener {
 
         String worldId = plugin.resolvePlayerWorldId(playerRef);
         BlockPos position = plugin.resolvePlayerRegionPosition(playerRef);
-        if (worldId == null || position == null) {
+        if (position == null) {
+            return;
+        }
+
+        worldId = plugin.resolveRegionWorldId(worldId, position);
+        if (worldId == null) {
             return;
         }
 

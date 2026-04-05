@@ -70,14 +70,14 @@ public final class HyGuardBoundaryFluidSystem extends EntityTickingSystem<Entity
                 .toList();
 
         for (Region region : protectedRegions) {
-            scanRegionBoundary(chunkStore, region, denies(region, RegionFlag.LIQUID_FLOW), denies(region, RegionFlag.FIRE_SPREAD));
+            scanRegion(chunkStore, region, denies(region, RegionFlag.LIQUID_FLOW), denies(region, RegionFlag.FIRE_SPREAD));
         }
     }
 
-    private void scanRegionBoundary(ChunkStore chunkStore,
-                                    Region region,
-                                    boolean blockLiquids,
-                                    boolean blockFire) {
+    private void scanRegion(ChunkStore chunkStore,
+                            Region region,
+                            boolean blockLiquids,
+                            boolean blockFire) {
         BlockPos min = region.getMin();
         BlockPos max = region.getMax();
         if (min == null || max == null) {
@@ -86,39 +86,20 @@ public final class HyGuardBoundaryFluidSystem extends EntityTickingSystem<Entity
 
         for (int x = min.getX(); x <= max.getX(); x++) {
             for (int y = min.getY(); y <= max.getY(); y++) {
-                inspectBoundaryCell(chunkStore, region, x, y, min.getZ(), blockLiquids, blockFire);
-                if (max.getZ() != min.getZ()) {
-                    inspectBoundaryCell(chunkStore, region, x, y, max.getZ(), blockLiquids, blockFire);
-                }
-            }
-        }
-
-        for (int z = min.getZ() + 1; z < max.getZ(); z++) {
-            for (int y = min.getY(); y <= max.getY(); y++) {
-                inspectBoundaryCell(chunkStore, region, min.getX(), y, z, blockLiquids, blockFire);
-                if (max.getX() != min.getX()) {
-                    inspectBoundaryCell(chunkStore, region, max.getX(), y, z, blockLiquids, blockFire);
-                }
-            }
-        }
-
-        for (int x = min.getX() + 1; x < max.getX(); x++) {
-            for (int z = min.getZ() + 1; z < max.getZ(); z++) {
-                inspectBoundaryCell(chunkStore, region, x, min.getY(), z, blockLiquids, blockFire);
-                if (max.getY() != min.getY()) {
-                    inspectBoundaryCell(chunkStore, region, x, max.getY(), z, blockLiquids, blockFire);
+                for (int z = min.getZ(); z <= max.getZ(); z++) {
+                    inspectCell(chunkStore, region, x, y, z, blockLiquids, blockFire);
                 }
             }
         }
     }
 
-    private void inspectBoundaryCell(ChunkStore chunkStore,
-                                     Region region,
-                                     int x,
-                                     int y,
-                                     int z,
-                                     boolean blockLiquids,
-                                     boolean blockFire) {
+    private void inspectCell(ChunkStore chunkStore,
+                             Region region,
+                             int x,
+                             int y,
+                             int z,
+                             boolean blockLiquids,
+                             boolean blockFire) {
         FluidSection section = getFluidSection(chunkStore, x, y, z);
         if (section == null) {
             return;
@@ -137,11 +118,29 @@ public final class HyGuardBoundaryFluidSystem extends EntityTickingSystem<Entity
             return;
         }
 
-        if (!hasExternalSource(chunkStore, region, x, y, z, isFire)) {
+        if (isFire) {
+            section.setFluid(localX, localY, localZ, Fluid.EMPTY, (byte) 0);
+            return;
+        }
+
+        if (!shouldClearLiquid(chunkStore, section, region, x, y, z, localX, localY, localZ)) {
             return;
         }
 
         section.setFluid(localX, localY, localZ, Fluid.EMPTY, (byte) 0);
+    }
+
+    private boolean shouldClearLiquid(ChunkStore chunkStore,
+                                      FluidSection section,
+                                      Region region,
+                                      int x,
+                                      int y,
+                                      int z,
+                                      int localX,
+                                      int localY,
+                                      int localZ) {
+        return section.getFluidLevel(localX, localY, localZ) > 0
+                || hasExternalSource(chunkStore, region, x, y, z, false);
     }
 
     private boolean hasExternalSource(ChunkStore chunkStore,

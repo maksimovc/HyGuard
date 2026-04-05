@@ -53,7 +53,7 @@ public final class EntryBlacklistPage extends InteractiveCustomUIPage<EntryBlack
 
     private String searchInput = "";
     private String selectedPlayerUuid;
-    private String statusMessage = "Select a known player or type a username manually, then add them to the blacklist.";
+    private String statusMessage;
     private StatusTone statusTone = StatusTone.INFO;
 
     public EntryBlacklistPage(PlayerRef playerRef, HyGuardPlugin plugin, String worldName, String regionName) {
@@ -61,6 +61,10 @@ public final class EntryBlacklistPage extends InteractiveCustomUIPage<EntryBlack
         this.plugin = plugin;
         this.worldName = worldName;
         this.regionName = regionName;
+        this.statusMessage = t(
+                "Select a known player or type a username manually, then add them to the blacklist.",
+                "Виберіть відомого гравця або введіть ім'я вручну, а потім додайте його до чорного списку."
+        );
     }
 
     @Override
@@ -112,8 +116,8 @@ public final class EntryBlacklistPage extends InteractiveCustomUIPage<EntryBlack
                 if (selected != null) {
                     searchInput = selected.name();
                     setStatus(StatusTone.INFO, selected.blocked()
-                            ? selected.name() + " is currently blocked from entering this region."
-                            : "Selected " + selected.name() + ". Press Add to block entry for this player.");
+                            ? f("%s is currently blocked from entering this region.", "%s зараз заблокований для входу в цей регіон.", selected.name())
+                            : f("Selected %s. Press Add to block entry for this player.", "Вибрано %s. Натисніть Додати, щоб заборонити цьому гравцю вхід.", selected.name()));
                 }
             }
         }
@@ -124,14 +128,14 @@ public final class EntryBlacklistPage extends InteractiveCustomUIPage<EntryBlack
     private void addPlayer(Region region) {
         if (!plugin.canManageRegion(playerRef, region)) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
-            setStatus(StatusTone.ERROR, "You do not have permission to change region flags here.");
+            setStatus(StatusTone.ERROR, t("You do not have permission to change region flags here.", "У вас немає дозволу змінювати прапори регіону тут."));
             return;
         }
 
         HyGuardPlugin.PlayerIdentity identity = resolveSelectedIdentity(region);
         if (identity == null) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.playerLookupFailed);
-            setStatus(StatusTone.ERROR, "Player not found. Pick a known player or type a remembered or online username.");
+            setStatus(StatusTone.ERROR, t("Player not found. Pick a known player or type a remembered or online username.", "Гравця не знайдено. Виберіть відомого гравця або введіть збережене чи онлайн-ім'я."));
             return;
         }
 
@@ -141,7 +145,7 @@ public final class EntryBlacklistPage extends InteractiveCustomUIPage<EntryBlack
         }
         if (blacklist.containsKey(identity.uuid())) {
             selectedPlayerUuid = identity.uuid();
-            setStatus(StatusTone.WARNING, identity.username() + " is already on the entry blacklist.");
+            setStatus(StatusTone.WARNING, f("%s is already on the entry blacklist.", "%s уже є в чорному списку входу.", identity.username()));
             return;
         }
 
@@ -151,19 +155,19 @@ public final class EntryBlacklistPage extends InteractiveCustomUIPage<EntryBlack
         plugin.playSuccessSound(playerRef);
         selectedPlayerUuid = identity.uuid();
         searchInput = identity.username();
-        setStatus(StatusTone.SUCCESS, "Blocked " + identity.username() + " from entering " + region.getName() + ".");
+        setStatus(StatusTone.SUCCESS, f("Blocked %s from entering %s.", "Гравцю %s заборонено входити в %s.", identity.username(), region.getName()));
     }
 
     private void removePlayer(Region region) {
         if (!plugin.canManageRegion(playerRef, region)) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
-            setStatus(StatusTone.ERROR, "You do not have permission to change region flags here.");
+            setStatus(StatusTone.ERROR, t("You do not have permission to change region flags here.", "У вас немає дозволу змінювати прапори регіону тут."));
             return;
         }
 
         HyGuardPlugin.PlayerIdentity identity = resolveSelectedIdentity(region);
         if (identity == null) {
-            setStatus(StatusTone.WARNING, "Select or type a player before trying to remove them.");
+            setStatus(StatusTone.WARNING, t("Select or type a player before trying to remove them.", "Виберіть або введіть гравця перед спробою видалити його."));
             return;
         }
 
@@ -172,14 +176,14 @@ public final class EntryBlacklistPage extends InteractiveCustomUIPage<EntryBlack
             blacklist.put(entry.uuid(), entry);
         }
         if (blacklist.remove(identity.uuid()) == null) {
-            setStatus(StatusTone.WARNING, identity.username() + " is not currently blacklisted for entry.");
+            setStatus(StatusTone.WARNING, f("%s is not currently blacklisted for entry.", "%s зараз не перебуває в чорному списку входу.", identity.username()));
             return;
         }
 
         plugin.setEntryBlacklist(region, blacklist.values());
         plugin.saveRegion(region);
         plugin.playSuccessSound(playerRef);
-        setStatus(StatusTone.SUCCESS, "Removed " + identity.username() + " from the entry blacklist.");
+        setStatus(StatusTone.SUCCESS, f("Removed %s from the entry blacklist.", "%s видалено з чорного списку входу.", identity.username()));
     }
 
     private HyGuardPlugin.PlayerIdentity resolveSelectedIdentity(Region region) {
@@ -206,37 +210,37 @@ public final class EntryBlacklistPage extends InteractiveCustomUIPage<EntryBlack
         bindClick(evt, "#RemoveButton", "Remove");
         bindValue(evt, "#SearchInput", "@SearchInput");
 
-        cmd.set("#PageTitle.Text", "Entry Blacklist - " + regionName);
-        cmd.set("#Subtitle.Text", "Region: " + regionName + " | World: " + worldName + " | Blacklisted players are denied entry even when normal entry is allowed.");
+        cmd.set("#PageTitle.Text", f("Entry Blacklist - %s", "Чорний список входу - %s", regionName));
+        cmd.set("#Subtitle.Text", f("Region: %s | World: %s | Blacklisted players are denied entry even when normal entry is allowed.", "Регіон: %s | Світ: %s | Гравцям із чорного списку заборонено вхід навіть тоді, коли звичайний вхід дозволений.", regionName, worldName));
         cmd.set("#SearchInput.Value", searchInput == null ? "" : searchInput);
         applyStatus(cmd);
 
         Region region = plugin.findRegionByName(worldName, regionName);
         if (region == null) {
-            cmd.set("#BlacklistSummary.Text", "Region missing");
-            cmd.set("#SelectedName.Text", "Region missing");
-            cmd.set("#SelectedState.Text", "n/a");
-            cmd.set("#SelectedHint.Text", "This region no longer exists.");
+            cmd.set("#BlacklistSummary.Text", t("Region missing", "Регіон відсутній"));
+            cmd.set("#SelectedName.Text", t("Region missing", "Регіон відсутній"));
+            cmd.set("#SelectedState.Text", t("n/a", "н/д"));
+            cmd.set("#SelectedHint.Text", t("This region no longer exists.", "Цей регіон більше не існує."));
             return;
         }
 
         List<HyGuardPlugin.PlayerIdentity> blacklist = plugin.getEntryBlacklist(region);
         cmd.set("#BlacklistSummary.Text", blacklist.isEmpty()
-                ? "No players are blocked from entering this region yet."
-                : "Blocked players: " + blacklist.size());
+            ? t("No players are blocked from entering this region yet.", "Жодного гравця ще не заблоковано для входу в цей регіон.")
+            : f("Blocked players: %d", "Заблоковані гравці: %d", blacklist.size()));
 
         renderCandidates(cmd, evt, region);
 
         CandidateEntry selected = getSelectedCandidate(region);
-        cmd.set("#SelectedName.Text", selected == null ? "No player selected" : selected.name());
+        cmd.set("#SelectedName.Text", selected == null ? t("No player selected", "Гравця не вибрано") : selected.name());
         cmd.set("#SelectedState.Text", selected == null
-                ? "Type a username or click a known player row"
-                : (selected.blocked() ? "Current state: blocked from entry" : "Current state: not blacklisted"));
+            ? t("Type a username or click a known player row", "Введіть ім'я або натисніть на рядок відомого гравця")
+            : (selected.blocked() ? t("Current state: blocked from entry", "Поточний стан: вхід заблоковано") : t("Current state: not blacklisted", "Поточний стан: не в чорному списку")));
         cmd.set("#SelectedHint.Text", selected == null
-                ? "Known players come from HyGuard's remembered player directory. Typing manually still works for online or remembered usernames."
+            ? t("Known players come from HyGuard's remembered player directory. Typing manually still works for online or remembered usernames.", "Відомі гравці беруться зі збереженого каталогу гравців HyGuard. Ручне введення теж працює для онлайн або запам'ятованих імен.")
                 : (selected.blocked()
-                    ? "Press Remove to allow this player to enter again."
-                    : "Press Add to deny this player entry to the region."));
+                ? t("Press Remove to allow this player to enter again.", "Натисніть Видалити, щоб знову дозволити цьому гравцю вхід.")
+                : t("Press Add to deny this player entry to the region.", "Натисніть Додати, щоб заборонити цьому гравцю вхід у регіон.")));
     }
 
     private void renderCandidates(UICommandBuilder cmd,
@@ -253,11 +257,11 @@ public final class EntryBlacklistPage extends InteractiveCustomUIPage<EntryBlack
             String rowId = GROUP_ROOT + "[" + index++ + "]";
             boolean selected = entry.uuid().equals(selectedPlayerUuid);
             boolean isSelf = playerRef.getUuid() != null && entry.uuid().equals(playerRef.getUuid().toString());
-            cmd.set(rowId + " #RoleBadge.Text", entry.blocked() ? "BLOCKED" : "KNOWN");
+                cmd.set(rowId + " #RoleBadge.Text", entry.blocked() ? t("BLOCKED", "ЗАБОРОНЕНО") : t("KNOWN", "ВІДОМИЙ"));
             cmd.set(rowId + " #MemberName.Text", entry.name());
             cmd.set(rowId + " #MemberMeta.Text", entry.blocked()
-                    ? "Entry is explicitly denied for this player in the current region."
-                    : "Known player. Select this row and press Add to blacklist them.");
+                    ? t("Entry is explicitly denied for this player in the current region.", "Для цього гравця вхід у поточний регіон явно заборонено.")
+                    : t("Known player. Select this row and press Add to blacklist them.", "Відомий гравець. Виберіть цей рядок і натисніть Додати, щоб внести його до чорного списку."));
             cmd.set(rowId + " #SelectedAccent.Visible", selected);
             cmd.set(rowId + " #OwnerChip.Visible", false);
             cmd.set(rowId + " #YouChip.Visible", isSelf);
@@ -319,5 +323,13 @@ public final class EntryBlacklistPage extends InteractiveCustomUIPage<EntryBlack
 
     private void bindValue(UIEventBuilder evt, String selector, String key) {
         evt.addEventBinding(CustomUIEventBindingType.ValueChanged, selector, EventData.of(key, selector + ".Value"), false);
+    }
+
+    private String t(String english, String ukrainian) {
+        return UiText.choose(playerRef, english, ukrainian);
+    }
+
+    private String f(String english, String ukrainian, Object... args) {
+        return UiText.format(playerRef, english, ukrainian, args);
     }
 }

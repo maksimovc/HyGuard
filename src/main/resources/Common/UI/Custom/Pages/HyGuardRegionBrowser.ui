@@ -3,7 +3,7 @@ $Hg = "HyGuardShared.ui";
 
 $C.@PageOverlay {
   $C.@Container {
-    Anchor: (Width: 1000, Height: 680);
+    Anchor: (Width: 1120, Height: 760);
     Background: $Hg.@HgPanelBackground;
 
     Button #BackButton {

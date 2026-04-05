@@ -76,6 +76,8 @@ public final class PlayerMoveSystem extends EntityTickingSystem<EntityStore> {
             return;
         }
 
+        plugin.rememberWorld(world);
+
         long now = System.currentTimeMillis();
         processPlayer(store, commandBuffer, entityRef, world, playerRef, transform, now);
     }
@@ -119,6 +121,7 @@ public final class PlayerMoveSystem extends EntityTickingSystem<EntityStore> {
         boolean regionIdsChanged = !previousState.regionIds().equals(currentRegionIds);
 
         if (!regionIdsChanged) {
+            applyRegionState(store, entityRef, playerRef, worldId, currentPosition);
             if (positionChanged) {
                 states.put(playerUuid, previousState.withObservation(currentPosition, currentRegionIds, now));
             }
@@ -130,7 +133,7 @@ public final class PlayerMoveSystem extends EntityTickingSystem<EntityStore> {
         if (positionChanged && !exitedRegions.isEmpty()) {
             ProtectionResult exitResult = plugin.evaluate(playerRef, previousState.worldId(), previousState.position(), ProtectionAction.EXIT);
             if (!exitResult.allowed()) {
-                if (teleportBack(commandBuffer, store, entityRef, previousState.safePositionOrFallback())) {
+                if (teleportBack(commandBuffer, store, entityRef, previousState.worldId(), previousState.safePositionOrFallback())) {
                     messageRenderer.sendExitDenied(playerRef, exitResult.region());
                 }
                 return;
@@ -141,14 +144,14 @@ public final class PlayerMoveSystem extends EntityTickingSystem<EntityStore> {
         if (positionChanged && !enteredRegions.isEmpty()) {
             Region restrictedEntryRegion = resolveRestrictedEntryRegion(playerRef, enteredRegions);
             if (restrictedEntryRegion != null) {
-                if (teleportBack(commandBuffer, store, entityRef, previousState.safePositionOrFallback())) {
+                if (teleportBack(commandBuffer, store, entityRef, previousState.worldId(), previousState.safePositionOrFallback())) {
                     messageRenderer.sendEntryDenied(playerRef, restrictedEntryRegion);
                 }
                 return;
             }
             ProtectionResult entryResult = plugin.evaluate(playerRef, worldId, currentPosition, ProtectionAction.ENTRY);
             if (!entryResult.allowed()) {
-                if (teleportBack(commandBuffer, store, entityRef, previousState.safePositionOrFallback())) {
+                if (teleportBack(commandBuffer, store, entityRef, previousState.worldId(), previousState.safePositionOrFallback())) {
                     messageRenderer.sendEntryDenied(playerRef, entryResult.region());
                 }
                 return;
@@ -229,11 +232,12 @@ public final class PlayerMoveSystem extends EntityTickingSystem<EntityStore> {
     private boolean teleportBack(CommandBuffer<EntityStore> commandBuffer,
                                  Store<EntityStore> store,
                                  Ref<EntityStore> entityRef,
+                                 String worldId,
                                  BlockPos position) {
         if (entityRef == null || !entityRef.isValid()) {
             return false;
         }
-        return plugin.teleportToPosition(commandBuffer, store, entityRef, position);
+        return plugin.teleportToPosition(commandBuffer, store, entityRef, worldId, position);
     }
 
     private BlockPos resolvePlayerRegionPosition(TransformComponent transform) {

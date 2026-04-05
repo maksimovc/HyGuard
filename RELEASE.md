@@ -1,19 +1,19 @@
 # HyGuard Release Guide
 
-This document captures the release process and deployment expectations for HyGuard `1.0.0`.
+This document captures the release process and deployment expectations for HyGuard `1.0.9`.
 
 ## Release Identity
 
 | Field | Value |
 | --- | --- |
 | Mod name | `HyGuard` |
-| Version | `1.0.0` |
-| Output jar | `build/libs/HyGuard-1.0.0.jar` |
+| Version | `1.0.9` |
+| Output jar | `build/libs/HyGuard-1.0.9.jar` |
 | Supported server baseline | `2026.03.26-89796e57b` |
 | Java baseline | `25` |
 | License | `AGPL-3.0` |
 
-## What 1.0.0 Includes
+## What 1.0.9 Includes
 
 ### Claim Types
 
@@ -59,17 +59,17 @@ call gradlew.bat clean build
 Expected output jars:
 
 ```text
-build/libs/HyGuard-1.0.0.jar
-build/libs/HyGuard-1.0.0-sources.jar
+build/libs/HyGuard-1.0.9.jar
+build/libs/HyGuard-1.0.9-sources.jar
 ```
 
-The release artifact is `build/libs/HyGuard-1.0.0.jar`.
+The release artifact is `build/libs/HyGuard-1.0.9.jar`.
 
 ## Pre-Release Checklist
 
 1. Run `call gradlew.bat clean build`.
-2. Confirm `build/libs/HyGuard-1.0.0.jar` exists.
-3. Confirm `src/main/resources/manifest.json` and Gradle jar naming both still report `1.0.0`.
+2. Confirm `build/libs/HyGuard-1.0.9.jar` exists.
+3. Confirm `src/main/resources/manifest.json` and Gradle jar naming both still report `1.0.9`.
 4. Review `README.md` and this file for drift against the current code.
 5. Verify that `Assets.zip` is available so the build is not using an incomplete environment.
 
@@ -80,7 +80,7 @@ The release artifact is `build/libs/HyGuard-1.0.0.jar`.
 1. Stop the target Hytale server/world.
 2. Open the target world's `mods/` directory.
 3. Remove or archive any stale non-versioned HyGuard jar such as `HyGuard.jar` to avoid ambiguity.
-4. Copy `build/libs/HyGuard-1.0.0.jar` into the `mods/` directory.
+4. Copy `build/libs/HyGuard-1.0.9.jar` into the `mods/` directory.
 5. Start the world/server.
 6. Let HyGuard initialize once so the runtime asset pack and data directories are prepared.
 
@@ -88,7 +88,7 @@ The release artifact is `build/libs/HyGuard-1.0.0.jar`.
 
 Inside the world save `mods/` folder you should see:
 
-- `HyGuard-1.0.0.jar`
+- `HyGuard-1.0.9.jar`
 - `thenexusgates_HyGuard/`
 - `thenexusgates_HyGuardData/`
 
@@ -137,7 +137,7 @@ After first start, inspect server logs for these classes of messages:
 
 Capture first-run logs for the release archive if you are preparing a public release package.
 
-## Known Release Notes For 1.0.0
+## Known Release Notes For 1.0.9
 
 - `__global__` is per world, not a single cross-world region.
 - Server-owned cuboid claims use `--server` and display `Server` as owner.
@@ -147,27 +147,24 @@ Capture first-run logs for the release archive if you are preparing a public rel
 ## GitHub Release Procedure
 
 1. Push the final source state to the `main` branch.
-2. Create tag `v1.0.0`.
-3. Draft a GitHub release titled `HyGuard v1.0.0`.
-4. Attach `build/libs/HyGuard-1.0.0.jar`.
-5. Optionally attach `build/libs/HyGuard-1.0.0-sources.jar`.
+2. Create tag `v1.0.9`.
+3. Draft a GitHub release titled `HyGuard v1.0.9`.
+4. Attach `build/libs/HyGuard-1.0.9.jar`.
+5. Optionally attach `build/libs/HyGuard-1.0.9-sources.jar`.
 6. Paste or adapt the changelog below.
 
 Suggested changelog:
 
 ```markdown
-## HyGuard v1.0.0
+## HyGuard v1.0.9
 
-Initial public release of HyGuard.
+Small cleanup and fix release for HyGuard.
 
-### Included
-- Cuboid territory protection with wand-based selection
-- Player-owned claims, server-owned staff claims, and per-world `__global__` fallback regions
-- Region browser, detail, member manager, and flag editor UI pages
-- JSON-backed persistence with async saves and scheduled backups
-- Runtime asset-pack bootstrap with separated data and asset roots
-- Localization for English and Ukrainian
-- Runtime enforcement for block actions, combat, item actions, entry/exit, entry role filters, invincibility, game mode, and fly state
+### Changed
+- Fixed region flags and runtime checks.
+- Cleaned up private hierarchy and fallback behavior.
+- Improved selection updates.
+- Optimized pickup, fire, and liquid handling.
 
 ### Requirements
 - Hytale Server `2026.03.26-89796e57b` or newer
@@ -179,8 +176,8 @@ Initial public release of HyGuard.
 If you publish on CurseForge:
 
 1. Set release type to `Release`.
-2. Upload `build/libs/HyGuard-1.0.0.jar`.
-3. Use version `1.0.0`.
+2. Upload `build/libs/HyGuard-1.0.9.jar`.
+3. Use version `1.0.9`.
 4. Set license to `AGPL-3.0`.
 5. Link source to `https://github.com/maksimovc/HyGuard`.
 

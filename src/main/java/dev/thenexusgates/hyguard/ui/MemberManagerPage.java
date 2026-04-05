@@ -57,7 +57,7 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
     private RegionRole selectedAddRole = RegionRole.MEMBER;
     private String selectedMemberUuid;
     private boolean removeArmed;
-    private String statusMessage = "Select a member to manage their role, or add a new player on the right.";
+    private String statusMessage;
     private StatusTone statusTone = StatusTone.INFO;
 
     public MemberManagerPage(PlayerRef playerRef, HyGuardPlugin plugin, String worldName, String regionName) {
@@ -65,6 +65,10 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
         this.plugin = plugin;
         this.worldName = worldName;
         this.regionName = regionName;
+        this.statusMessage = t(
+                "Select a member to manage their role, or add a new player on the right.",
+                "Оберіть учасника, щоб керувати його роллю, або додайте нового гравця праворуч."
+        );
     }
 
     @Override
@@ -123,8 +127,8 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
                 MemberEntry selected = getSelectedEntry(region);
                 if (selected != null) {
                     setStatus(StatusTone.INFO, selected.owner()
-                            ? selected.name() + " is the owner and cannot be demoted or removed here."
-                            : "Selected " + selected.name() + ". Use the action panel to promote, demote, or remove them.");
+                            ? f("%s is the owner and cannot be demoted or removed here.", "%s є власником і не може бути знижений або видалений тут.", selected.name())
+                            : f("Selected %s. Use the action panel to promote, demote, or remove them.", "Вибрано %s. Використовуйте панель дій, щоб підвищити, знизити або видалити цього гравця.", selected.name()));
                 }
             }
         }
@@ -134,26 +138,30 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
 
     private void pickRole(RegionRole role) {
         selectedAddRole = role;
-        setStatus(StatusTone.INFO, "New or updated members will be assigned as " + RegionUiText.displayRole(role) + ".");
+        setStatus(StatusTone.INFO, f(
+                "New or updated members will be assigned as %s.",
+                "Нові або оновлені учасники отримають роль %s.",
+                RegionUiText.displayRole(playerRef, role)
+        ));
     }
 
     private void applyAdd(Region region) {
         if (!plugin.canManageMembership(playerRef, region)) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
-            setStatus(StatusTone.ERROR, "You do not have permission to manage membership in this region.");
+            setStatus(StatusTone.ERROR, t("You do not have permission to manage membership in this region.", "У вас немає дозволу керувати учасниками в цьому регіоні."));
             return;
         }
 
         HyGuardPlugin.PlayerIdentity target = plugin.resolvePlayerIdentity(addMemberInput == null ? null : addMemberInput.trim());
         if (target == null) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.playerLookupFailed);
-            setStatus(StatusTone.ERROR, "Player not found. Use an exact username or a remembered player name.");
+            setStatus(StatusTone.ERROR, t("Player not found. Use an exact username or a remembered player name.", "Гравця не знайдено. Використайте точне ім'я або збережене ім'я гравця."));
             return;
         }
         if (target.uuid().equals(region.getOwnerUuid())) {
             selectedMemberUuid = target.uuid();
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.cannotAssignOwner);
-            setStatus(StatusTone.WARNING, "The owner already has the highest role and cannot be reassigned here.");
+            setStatus(StatusTone.WARNING, t("The owner already has the highest role and cannot be reassigned here.", "Власник уже має найвищу роль і не може бути перепризначений тут."));
             return;
         }
 
@@ -163,7 +171,7 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
                 "name", region.getName(),
                 "limit", Integer.toString(plugin.getConfigSnapshot().limits.maxMembersPerRegion)
             ));
-            setStatus(StatusTone.WARNING, "This region already reached the configured member limit.");
+            setStatus(StatusTone.WARNING, t("This region already reached the configured member limit.", "Цей регіон уже досяг налаштованого ліміту учасників."));
             return;
         }
         RegionMember updated = new RegionMember(target.uuid(), target.username(), selectedAddRole);
@@ -184,30 +192,33 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
             plugin.playSuccessSound(playerRef);
         }
         setStatus(StatusTone.SUCCESS,
-                (existing == null ? "Added " : "Updated ") + updated.getName() + " as " + RegionUiText.displayRole(updated.getRole()) + ".");
+            f(existing == null ? "Added %s as %s." : "Updated %s as %s.",
+                existing == null ? "Додано %s як %s." : "Оновлено %s як %s.",
+                updated.getName(),
+                RegionUiText.displayRole(playerRef, updated.getRole())));
     }
 
     private void promoteSelected(Region region) {
         if (!plugin.canManageMembership(playerRef, region)) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
-            setStatus(StatusTone.ERROR, "You do not have permission to promote members in this region.");
+            setStatus(StatusTone.ERROR, t("You do not have permission to promote members in this region.", "У вас немає дозволу підвищувати учасників у цьому регіоні."));
             return;
         }
 
         MemberEntry selected = getSelectedEntry(region);
         if (selected == null) {
-            setStatus(StatusTone.WARNING, "Select a member row first.");
+            setStatus(StatusTone.WARNING, t("Select a member row first.", "Спочатку виберіть рядок учасника."));
             return;
         }
         if (selected.owner()) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.cannotAssignOwner);
-            setStatus(StatusTone.WARNING, "The owner cannot be promoted beyond owner.");
+            setStatus(StatusTone.WARNING, t("The owner cannot be promoted beyond owner.", "Власника не можна підвищити вище ролі власника."));
             return;
         }
 
         RegionRole nextRole = promoteRole(selected.role());
         if (nextRole == null) {
-            setStatus(StatusTone.WARNING, RegionUiText.displayRole(selected.role()) + " is already at the highest assignable tier.");
+            setStatus(StatusTone.WARNING, f("%s is already at the highest assignable tier.", "%s уже має найвищий доступний рівень.", RegionUiText.displayRole(playerRef, selected.role())));
             return;
         }
 
@@ -220,30 +231,30 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
                 "role", nextRole.name()
         ));
         plugin.playSuccessSound(playerRef);
-        setStatus(StatusTone.SUCCESS, selected.name() + " is now " + RegionUiText.displayRole(nextRole) + ".");
+        setStatus(StatusTone.SUCCESS, f("%s is now %s.", "%s тепер має роль %s.", selected.name(), RegionUiText.displayRole(playerRef, nextRole)));
     }
 
     private void demoteSelected(Region region) {
         if (!plugin.canManageMembership(playerRef, region)) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
-            setStatus(StatusTone.ERROR, "You do not have permission to demote members in this region.");
+            setStatus(StatusTone.ERROR, t("You do not have permission to demote members in this region.", "У вас немає дозволу знижувати учасників у цьому регіоні."));
             return;
         }
 
         MemberEntry selected = getSelectedEntry(region);
         if (selected == null) {
-            setStatus(StatusTone.WARNING, "Select a member row first.");
+            setStatus(StatusTone.WARNING, t("Select a member row first.", "Спочатку виберіть рядок учасника."));
             return;
         }
         if (selected.owner()) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.cannotAssignOwner);
-            setStatus(StatusTone.WARNING, "The owner cannot be demoted.");
+            setStatus(StatusTone.WARNING, t("The owner cannot be demoted.", "Власника не можна знизити."));
             return;
         }
 
         RegionRole nextRole = demoteRole(selected.role());
         if (nextRole == null) {
-            setStatus(StatusTone.WARNING, RegionUiText.displayRole(selected.role()) + " is already the lowest tier.");
+            setStatus(StatusTone.WARNING, f("%s is already the lowest tier.", "%s уже має найнижчий рівень.", RegionUiText.displayRole(playerRef, selected.role())));
             return;
         }
 
@@ -256,30 +267,30 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
                 "role", nextRole.name()
         ));
         plugin.playSuccessSound(playerRef);
-        setStatus(StatusTone.SUCCESS, selected.name() + " is now " + RegionUiText.displayRole(nextRole) + ".");
+        setStatus(StatusTone.SUCCESS, f("%s is now %s.", "%s тепер має роль %s.", selected.name(), RegionUiText.displayRole(playerRef, nextRole)));
     }
 
     private void removeSelected(Region region) {
         if (!plugin.canManageMembership(playerRef, region)) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
-            setStatus(StatusTone.ERROR, "You do not have permission to remove members from this region.");
+            setStatus(StatusTone.ERROR, t("You do not have permission to remove members from this region.", "У вас немає дозволу видаляти учасників із цього регіону."));
             return;
         }
 
         MemberEntry selected = getSelectedEntry(region);
         if (selected == null) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.memberNotFound, Map.of("name", region.getName()));
-            setStatus(StatusTone.WARNING, "Select a member before trying to remove them.");
+            setStatus(StatusTone.WARNING, t("Select a member before trying to remove them.", "Виберіть учасника перед спробою його видалити."));
             return;
         }
         if (selected.owner()) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.cannotRemoveOwner);
-            setStatus(StatusTone.WARNING, "The owner cannot be removed from the region.");
+            setStatus(StatusTone.WARNING, t("The owner cannot be removed from the region.", "Власника не можна видалити з регіону."));
             return;
         }
         if (!removeArmed) {
             removeArmed = true;
-            setStatus(StatusTone.WARNING, "Press Remove Member again to confirm removing " + selected.name() + ".");
+            setStatus(StatusTone.WARNING, f("Press Remove Member again to confirm removing %s.", "Натисніть Видалити учасника ще раз, щоб підтвердити видалення %s.", selected.name()));
             return;
         }
 
@@ -292,7 +303,7 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
                 plugin.playMemberRemovedSound(playerRef);
             selectedMemberUuid = null;
             removeArmed = false;
-            setStatus(StatusTone.SUCCESS, "Removed " + selected.name() + " from the region.");
+            setStatus(StatusTone.SUCCESS, f("Removed %s from the region.", "Видалено %s з регіону.", selected.name()));
         }
     }
 
@@ -322,19 +333,19 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
         bindClick(evt, "#RoleVisitorButton", "PickRole:VISITOR");
         bindValue(evt, "#AddMemberInput", "@AddMemberInput");
 
-        cmd.set("#PageTitle.Text", "Member Manager - " + regionName);
-        cmd.set("#Subtitle.Text", "Region: " + regionName + " | World: " + worldName + " | Add members with the role picker instead of typing raw enum names.");
+        cmd.set("#PageTitle.Text", f("Member Manager - %s", "Керування учасниками - %s", regionName));
+        cmd.set("#Subtitle.Text", f("Region: %s | World: %s | Add members with the role picker instead of typing raw enum names.", "Регіон: %s | Світ: %s | Додавайте учасників через вибір ролі замість введення сирих назв enum.", regionName, worldName));
         cmd.set("#AddMemberInput.Value", addMemberInput == null ? "" : addMemberInput);
-        cmd.set("#AddHint.Text", RegionUiText.roleDescription(selectedAddRole));
+        cmd.set("#AddHint.Text", RegionUiText.roleDescription(playerRef, selectedAddRole));
         applyStatus(cmd);
         setRolePickerState(cmd);
 
         Region region = plugin.findRegionByName(worldName, regionName);
         if (region == null) {
-            cmd.set("#OwnerValue.Text", "Owner: n/a");
-            cmd.set("#SelectedName.Text", "Region missing");
-            cmd.set("#SelectedRole.Text", "n/a");
-            cmd.set("#SelectionHint.Text", "This region no longer exists.");
+            cmd.set("#OwnerValue.Text", t("Owner: n/a", "Власник: н/д"));
+            cmd.set("#SelectedName.Text", t("Region missing", "Регіон відсутній"));
+            cmd.set("#SelectedRole.Text", t("n/a", "н/д"));
+            cmd.set("#SelectionHint.Text", t("This region no longer exists.", "Цей регіон більше не існує."));
             cmd.set("#AddMemberButton.Visible", false);
             cmd.set("#AddMemberButtonDisabled.Visible", true);
             setActionAvailability(cmd, false, false, false);
@@ -342,7 +353,7 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
             return;
         }
 
-        cmd.set("#OwnerValue.Text", "Owner: " + region.getOwnerName());
+        cmd.set("#OwnerValue.Text", f("Owner: %s", "Власник: %s", region.getOwnerName()));
         renderMembers(cmd, evt, region);
 
         MemberEntry selected = getSelectedEntry(region);
@@ -354,23 +365,23 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
         boolean canRemove = hasPermission && selected != null && !selected.owner();
         setActionAvailability(cmd, canPromote, canDemote, canRemove);
 
-        cmd.set("#SelectedName.Text", selected == null ? "No member selected" : selected.name());
-        cmd.set("#SelectedRole.Text", selected == null ? "Choose a row from the left" : RegionUiText.displayRole(selected.role()));
+        cmd.set("#SelectedName.Text", selected == null ? t("No member selected", "Учасника не вибрано") : selected.name());
+        cmd.set("#SelectedRole.Text", selected == null ? t("Choose a row from the left", "Виберіть рядок ліворуч") : RegionUiText.displayRole(playerRef, selected.role()));
         cmd.set("#SelectionHint.Text", selected == null
-                ? "Select a member row to promote, demote, or remove that player."
+                ? t("Select a member row to promote, demote, or remove that player.", "Виберіть рядок учасника, щоб підвищити, знизити або видалити цього гравця.")
                 : selected.owner()
-                    ? "Owner can be viewed but not removed or demoted from this menu."
-                    : RegionUiText.roleDescription(selected.role()));
-        cmd.set("#RemoveButtonLabel.Text", removeArmed && canRemove ? "Confirm Remove" : "Remove Member");
+                    ? t("Owner can be viewed but not removed or demoted from this menu.", "Власника можна переглядати, але не можна видалити або знизити з цього меню.")
+                    : RegionUiText.roleDescription(playerRef, selected.role()));
+        cmd.set("#RemoveButtonLabel.Text", removeArmed && canRemove ? t("Confirm Remove", "Підтвердити видалення") : t("Remove Member", "Видалити учасника"));
         cmd.set("#RemoveHint.Text", !hasPermission
-                ? "You can inspect members here, but you lack permission to change them."
+                ? t("You can inspect members here, but you lack permission to change them.", "Ви можете переглядати учасників тут, але не маєте дозволу змінювати їх.")
                 : removeArmed && canRemove
-                    ? "Dangerous action armed. Press Remove Member again to confirm."
+                    ? t("Dangerous action armed. Press Remove Member again to confirm.", "Небезпечну дію підготовлено. Натисніть Видалити учасника ще раз для підтвердження.")
                     : selected != null && selected.owner()
-                        ? "Owner is locked and cannot be removed."
+                        ? t("Owner is locked and cannot be removed.", "Власник заблокований і не може бути видалений.")
                         : selected == null
-                            ? "Select a member to unlock management actions."
-                            : "Promote and Demote move the selected member by one role step.");
+                            ? t("Select a member to unlock management actions.", "Виберіть учасника, щоб розблокувати дії керування.")
+                            : t("Promote and Demote move the selected member by one role step.", "Підвищити та Знизити змінюють роль вибраного учасника на один щабель."));
     }
 
     private void renderMembers(UICommandBuilder cmd,
@@ -388,11 +399,11 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
             String rowId = GROUP_ROOT + "[" + index++ + "]";
             boolean selected = entry.uuid().equals(selectedMemberUuid);
             boolean isSelf = playerRef.getUuid() != null && entry.uuid().equals(playerRef.getUuid().toString());
-            cmd.set(rowId + " #RoleBadge.Text", RegionUiText.displayRole(entry.role()));
+                cmd.set(rowId + " #RoleBadge.Text", RegionUiText.displayRole(playerRef, entry.role()));
             cmd.set(rowId + " #MemberName.Text", entry.name());
             cmd.set(rowId + " #MemberMeta.Text", entry.owner()
-                    ? (isSelf ? "Owner • You" : "Owner")
-                    : (isSelf ? RegionUiText.roleDescription(entry.role()) + " • You" : RegionUiText.roleDescription(entry.role())));
+                    ? (isSelf ? t("Owner • You", "Власник • Ви") : t("Owner", "Власник"))
+                    : (isSelf ? RegionUiText.roleDescription(playerRef, entry.role()) + t(" • You", " • Ви") : RegionUiText.roleDescription(playerRef, entry.role())));
             cmd.set(rowId + " #SelectedAccent.Visible", selected);
             cmd.set(rowId + " #OwnerChip.Visible", entry.owner());
             cmd.set(rowId + " #YouChip.Visible", isSelf);
@@ -469,7 +480,7 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
         setRoleState(cmd, "#RoleMemberSelected", selectedAddRole == RegionRole.MEMBER);
         setRoleState(cmd, "#RoleTrustedSelected", selectedAddRole == RegionRole.TRUSTED);
         setRoleState(cmd, "#RoleVisitorSelected", selectedAddRole == RegionRole.VISITOR);
-        cmd.set("#SelectedRolePreview.Text", "Selected role: " + RegionUiText.displayRole(selectedAddRole));
+        cmd.set("#SelectedRolePreview.Text", f("Selected role: %s", "Вибрана роль: %s", RegionUiText.displayRole(playerRef, selectedAddRole)));
     }
 
     private void setRoleState(UICommandBuilder cmd, String selector, boolean visible) {
@@ -495,5 +506,13 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
 
     private void bindValue(UIEventBuilder evt, String selector, String key) {
         evt.addEventBinding(CustomUIEventBindingType.ValueChanged, selector, EventData.of(key, selector + ".Value"), false);
+    }
+
+    private String t(String english, String ukrainian) {
+        return UiText.choose(playerRef, english, ukrainian);
+    }
+
+    private String f(String english, String ukrainian, Object... args) {
+        return UiText.format(playerRef, english, ukrainian, args);
     }
 }

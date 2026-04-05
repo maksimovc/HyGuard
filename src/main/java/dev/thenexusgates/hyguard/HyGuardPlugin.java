@@ -12,8 +12,9 @@ import com.hypixel.hytale.builtin.weather.components.WeatherTracker;
 import com.hypixel.hytale.protocol.GameMode;
 import com.hypixel.hytale.protocol.MovementStates;
 import com.hypixel.hytale.protocol.SavedMovementStates;
-import com.hypixel.hytale.protocol.packets.setup.SetTimeDilation;
-import com.hypixel.hytale.protocol.packets.world.UpdateTime;
+import com.hypixel.hytale.protocol.packets.world.ClearEditorTimeOverride;
+import com.hypixel.hytale.protocol.packets.world.UpdateEditorTimeOverride;
+import com.hypixel.hytale.protocol.packets.world.UpdateEditorWeatherOverride;
 import com.hypixel.hytale.server.core.asset.type.item.config.Item;
 import com.hypixel.hytale.server.core.HytaleServer;
 import com.hypixel.hytale.server.core.Message;
@@ -30,7 +31,6 @@ import com.hypixel.hytale.server.core.inventory.ItemStack;
 import com.hypixel.hytale.server.core.modules.entity.EntityModule;
 import com.hypixel.hytale.server.core.modules.interaction.interaction.config.Interaction;
 import com.hypixel.hytale.server.core.modules.entity.component.TransformComponent;
-import com.hypixel.hytale.server.core.modules.time.TimeResource;
 import com.hypixel.hytale.server.core.modules.time.WorldTimeResource;
 import com.hypixel.hytale.server.core.modules.entity.teleport.Teleport;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
@@ -203,6 +203,7 @@ public final class HyGuardPlugin extends JavaPlugin {
     private DisconnectCleanupSystem disconnectCleanupSystem;
     private final ConcurrentHashMap<String, WandLeftClickState> recentWandLeftClicks = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, SelectionSnapshot> lastClearedSelections = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, World> knownWorlds = new ConcurrentHashMap<>();
 
     public HyGuardPlugin(@Nonnull JavaPluginInit init) {
         super(init);
@@ -263,6 +264,7 @@ public final class HyGuardPlugin extends JavaPlugin {
             getEntityStoreRegistry().registerSystem(new HyGuardEntityDamageSystem(this));
             getEntityStoreRegistry().registerSystem(new HyGuardKnockbackSystem(this));
             getEntityStoreRegistry().registerSystem(new HyGuardItemSystem.DropSystem(this));
+            getEntityStoreRegistry().registerSystem(new HyGuardItemSystem.PickupGuardSystem(this));
             getEntityStoreRegistry().registerSystem(new HyGuardItemSystem.PickupSystem(this));
             getEntityStoreRegistry().registerSystem(playerMoveSystem);
             getEntityStoreRegistry().registerSystem(boundaryFluidSystem);
@@ -1096,7 +1098,43 @@ public final class HyGuardPlugin extends JavaPlugin {
         }
         Universe universe = Universe.get();
         World world = universe == null ? null : universe.getWorld(playerRef.getWorldUuid());
+        rememberWorld(world);
         return world == null ? null : world.getName();
+    }
+
+    public void rememberWorld(World world) {
+        if (world == null || world.getName() == null || world.getName().isBlank()) {
+            return;
+        }
+        knownWorlds.put(world.getName(), world);
+    }
+
+    public String resolveRegionWorldId(String worldId, BlockPos position) {
+        if (position == null) {
+            return worldId;
+        }
+
+        if (worldId != null && !worldId.isBlank() && !getRegionsAt(worldId, position).isEmpty()) {
+            return worldId;
+        }
+
+        String resolved = null;
+        for (String candidateWorldId : getKnownWorldIds()) {
+            if (candidateWorldId == null || candidateWorldId.isBlank()) {
+                continue;
+            }
+            if (worldId != null && candidateWorldId.equalsIgnoreCase(worldId)) {
+                continue;
+            }
+            if (getRegionsAt(candidateWorldId, position).isEmpty()) {
+                continue;
+            }
+            if (resolved != null) {
+                return worldId;
+            }
+            resolved = candidateWorldId;
+        }
+        return resolved == null ? worldId : resolved;
     }
 
     public GameMode parseConfiguredGameMode(String raw) {
@@ -1166,7 +1204,8 @@ public final class HyGuardPlugin extends JavaPlugin {
             return;
         }
 
-        List<Region> regions = getRegionsAt(worldId, position);
+        String resolvedWorldId = resolveRegionWorldId(worldId, position);
+        List<Region> regions = getRegionsAt(resolvedWorldId, position);
         applyRegionGameMode(store, entityRef, playerRef, regions);
         applyRegionFly(store, entityRef, playerRef, regions);
         applyRegionTimeAndWeather(store, entityRef, playerRef, regions);
@@ -1176,7 +1215,12 @@ public final class HyGuardPlugin extends JavaPlugin {
         if (playerRef == null) {
             return ProtectionResult.allow();
         }
-        return protectionEngine.evaluate(new ProtectionQuery(playerRef.getUuid().toString(), worldId, position, action));
+        return protectionEngine.evaluate(new ProtectionQuery(
+                playerRef.getUuid().toString(),
+                resolveRegionWorldId(worldId, position),
+                position,
+                action
+        ));
     }
 
     public boolean isFlagAllowed(PlayerRef playerRef,
@@ -1187,7 +1231,7 @@ public final class HyGuardPlugin extends JavaPlugin {
         if (worldId == null || position == null) {
             return defaultMode == RegionFlagValue.Mode.ALLOW;
         }
-        return isFlagAllowed(playerRef, getRegionsAt(worldId, position), flag, defaultMode);
+        return isFlagAllowed(playerRef, getRegionsAt(resolveRegionWorldId(worldId, position), position), flag, defaultMode);
     }
 
     public boolean isFlagAllowed(PlayerRef playerRef,
@@ -1213,11 +1257,16 @@ public final class HyGuardPlugin extends JavaPlugin {
         }
         Vector3d destination = resolveRegionTeleportPosition(region);
         World currentWorld = store.getExternalData() == null ? null : store.getExternalData().getWorld();
-        if (currentWorld == null) {
+        rememberWorld(currentWorld);
+        World targetWorld = resolveTargetWorld(region.getWorldId(), currentWorld);
+        if (targetWorld == null && currentWorld == null) {
             transform.teleportPosition(destination);
             return true;
         }
-        store.putComponent(entityRef, Teleport.getComponentType(), Teleport.createForPlayer(currentWorld, destination, transform.getRotation()));
+        if (targetWorld == null) {
+            return false;
+        }
+        store.putComponent(entityRef, Teleport.getComponentType(), Teleport.createForPlayer(targetWorld, destination, transform.getRotation()));
         return true;
     }
 
@@ -1238,15 +1287,28 @@ public final class HyGuardPlugin extends JavaPlugin {
         }
         Vector3d destination = resolveRegionTeleportPosition(region);
         World currentWorld = store.getExternalData() == null ? null : store.getExternalData().getWorld();
-        if (currentWorld == null) {
+        rememberWorld(currentWorld);
+        World targetWorld = resolveTargetWorld(region.getWorldId(), currentWorld);
+        if (targetWorld == null && currentWorld == null) {
             transform.teleportPosition(destination);
             return true;
         }
-        commandBuffer.putComponent(entityRef, Teleport.getComponentType(), Teleport.createForPlayer(currentWorld, destination, transform.getRotation()));
+        if (targetWorld == null) {
+            return false;
+        }
+        commandBuffer.putComponent(entityRef, Teleport.getComponentType(), Teleport.createForPlayer(targetWorld, destination, transform.getRotation()));
         return true;
     }
 
     public boolean teleportToPosition(Store<EntityStore> store, Ref<EntityStore> entityRef, BlockPos position) {
+        World currentWorld = store == null || store.getExternalData() == null ? null : store.getExternalData().getWorld();
+        return teleportToPosition(store, entityRef, currentWorld == null ? null : currentWorld.getName(), position);
+    }
+
+    public boolean teleportToPosition(Store<EntityStore> store,
+                                      Ref<EntityStore> entityRef,
+                                      String worldId,
+                                      BlockPos position) {
         if (store == null || entityRef == null || position == null) {
             return false;
         }
@@ -1256,17 +1318,31 @@ public final class HyGuardPlugin extends JavaPlugin {
         }
         Vector3d destination = new Vector3d(position.getX() + 0.5, position.getY(), position.getZ() + 0.5);
         World currentWorld = store.getExternalData() == null ? null : store.getExternalData().getWorld();
-        if (currentWorld == null) {
+        rememberWorld(currentWorld);
+        World targetWorld = resolveTargetWorld(worldId, currentWorld);
+        if (targetWorld == null && currentWorld == null) {
             transform.teleportPosition(destination);
             return true;
         }
-        store.putComponent(entityRef, Teleport.getComponentType(), Teleport.createForPlayer(currentWorld, destination, transform.getRotation()));
+        if (targetWorld == null) {
+            return false;
+        }
+        store.putComponent(entityRef, Teleport.getComponentType(), Teleport.createForPlayer(targetWorld, destination, transform.getRotation()));
         return true;
     }
 
     public boolean teleportToPosition(CommandBuffer<EntityStore> commandBuffer,
                                       Store<EntityStore> store,
                                       Ref<EntityStore> entityRef,
+                                      BlockPos position) {
+        World currentWorld = store == null || store.getExternalData() == null ? null : store.getExternalData().getWorld();
+        return teleportToPosition(commandBuffer, store, entityRef, currentWorld == null ? null : currentWorld.getName(), position);
+    }
+
+    public boolean teleportToPosition(CommandBuffer<EntityStore> commandBuffer,
+                                      Store<EntityStore> store,
+                                      Ref<EntityStore> entityRef,
+                                      String worldId,
                                       BlockPos position) {
         if (commandBuffer == null || store == null || entityRef == null || position == null) {
             return false;
@@ -1277,11 +1353,16 @@ public final class HyGuardPlugin extends JavaPlugin {
         }
         Vector3d destination = new Vector3d(position.getX() + 0.5, position.getY(), position.getZ() + 0.5);
         World currentWorld = store.getExternalData() == null ? null : store.getExternalData().getWorld();
-        if (currentWorld == null) {
+        rememberWorld(currentWorld);
+        World targetWorld = resolveTargetWorld(worldId, currentWorld);
+        if (targetWorld == null && currentWorld == null) {
             transform.teleportPosition(destination);
             return true;
         }
-        commandBuffer.putComponent(entityRef, Teleport.getComponentType(), Teleport.createForPlayer(currentWorld, destination, transform.getRotation()));
+        if (targetWorld == null) {
+            return false;
+        }
+        commandBuffer.putComponent(entityRef, Teleport.getComponentType(), Teleport.createForPlayer(targetWorld, destination, transform.getRotation()));
         return true;
     }
 
@@ -1916,6 +1997,19 @@ public final class HyGuardPlugin extends JavaPlugin {
         return null;
     }
 
+    private World resolveTargetWorld(String worldId, World fallbackWorld) {
+        if (fallbackWorld != null) {
+            rememberWorld(fallbackWorld);
+            if (worldId == null || worldId.isBlank() || worldId.equalsIgnoreCase(fallbackWorld.getName())) {
+                return fallbackWorld;
+            }
+        }
+        if (worldId == null || worldId.isBlank()) {
+            return fallbackWorld;
+        }
+        return knownWorlds.get(worldId);
+    }
+
     private void applyRegionGameMode(Store<EntityStore> store,
                                      Ref<EntityStore> entityRef,
                                      PlayerRef playerRef,
@@ -1997,11 +2091,12 @@ public final class HyGuardPlugin extends JavaPlugin {
 
         Integer lockedWeather = resolveLockedWeather(playerRef, regions);
         if (lockedWeather != null) {
-            weatherTracker.sendWeatherIndex(playerRef, lockedWeather, 0f);
+            int effectiveWeatherIndex = lockedWeather > 0 ? lockedWeather : weatherTracker.getWeatherIndex();
+            playerRef.getPacketHandler().write(new UpdateEditorWeatherOverride(effectiveWeatherIndex));
             return;
         }
 
-        weatherTracker.sendWeatherIndex(playerRef, weatherTracker.getWeatherIndex(), 0f);
+        playerRef.getPacketHandler().write(new UpdateEditorWeatherOverride(weatherTracker.getWeatherIndex()));
     }
 
     private void applyRegionTime(Store<EntityStore> store,
@@ -2019,16 +2114,15 @@ public final class HyGuardPlugin extends JavaPlugin {
                     .withMinute(lockedTime.getMinute())
                     .withSecond(0)
                     .withNano(0);
-            playerRef.getPacketHandler().write(new SetTimeDilation(0f));
-            playerRef.getPacketHandler().write(new UpdateTime(WorldTimeResource.instantToInstantData(lockedDateTime.toInstant(WorldTimeResource.ZONE_OFFSET))));
+            playerRef.getPacketHandler().write(new UpdateEditorTimeOverride(
+                    WorldTimeResource.instantToInstantData(lockedDateTime.toInstant(WorldTimeResource.ZONE_OFFSET)),
+                    true
+            ));
             return;
         }
 
+        playerRef.getPacketHandler().write(new ClearEditorTimeOverride());
         worldTimeResource.sendTimePackets(playerRef);
-        TimeResource timeResource = store.getResource(TimeResource.getResourceType());
-        if (timeResource != null) {
-            playerRef.getPacketHandler().write(new SetTimeDilation(timeResource.getTimeDilationModifier()));
-        }
     }
 
     private boolean isFlagGranted(Region region, PlayerRef playerRef, RegionFlagValue flagValue) {

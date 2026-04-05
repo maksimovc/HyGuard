@@ -44,7 +44,7 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
     private final String worldName;
     private final String regionName;
     private boolean deleteArmed;
-    private String statusMessage = "Use navigation, management, and danger actions from their separate cards below.";
+    private String statusMessage;
     private StatusTone statusTone = StatusTone.INFO;
 
     public RegionDetailPage(PlayerRef playerRef, HyGuardPlugin plugin, String worldName, String regionName) {
@@ -52,6 +52,10 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
         this.plugin = plugin;
         this.worldName = worldName;
         this.regionName = regionName;
+        this.statusMessage = t(
+                "Use navigation, management, and danger actions from their separate cards below.",
+                "Використовуйте навігаційні, керувальні та небезпечні дії з окремих карток нижче."
+        );
     }
 
     @Override
@@ -89,36 +93,36 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
             case "Teleport" -> {
                 if (!plugin.canTeleportToRegion(playerRef, region)) {
                     plugin.send(playerRef, plugin.getConfigSnapshot().messages.tpDenied);
-                    setStatus(StatusTone.ERROR, "You cannot teleport to this region.");
+                    setStatus(StatusTone.ERROR, t("You cannot teleport to this region.", "Ви не можете телепортуватися в цей регіон."));
                 } else if (!plugin.teleportToRegion(store, entityRef, playerRef, region)) {
                     plugin.send(playerRef, plugin.getConfigSnapshot().messages.teleportFailed);
-                    setStatus(StatusTone.ERROR, "Teleport failed. The target location may be invalid.");
+                    setStatus(StatusTone.ERROR, t("Teleport failed. The target location may be invalid.", "Телепортація не вдалася. Цільова точка може бути недійсною."));
                 } else {
                     plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionTeleported, Map.of("name", region.getName()));
                     plugin.playSuccessSound(playerRef);
-                    setStatus(StatusTone.SUCCESS, "Teleported to " + region.getName() + ".");
+                    setStatus(StatusTone.SUCCESS, f("Teleported to %s.", "Телепортовано до %s.", region.getName()));
                 }
             }
             case "Select" -> {
                 if (region.isGlobal()) {
                     plugin.send(playerRef, plugin.getConfigSnapshot().messages.globalSelectionUnsupported);
-                    setStatus(StatusTone.WARNING, "Global regions cannot load a cuboid selection.");
+                    setStatus(StatusTone.WARNING, t("Global regions cannot load a cuboid selection.", "Глобальні регіони не можуть завантажувати кубоїдне виділення."));
                 } else if (!plugin.canManageRegion(playerRef, region)) {
                     plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
-                    setStatus(StatusTone.ERROR, "You do not have permission to load this region into selection.");
+                    setStatus(StatusTone.ERROR, t("You do not have permission to load this region into selection.", "У вас немає дозволу завантажити цей регіон у виділення."));
                 } else if (plugin.loadRegionSelection(playerRef, region)) {
                     plugin.send(playerRef, plugin.getConfigSnapshot().messages.selectionLoaded, Map.of("name", region.getName()));
                     plugin.playSuccessSound(playerRef);
-                    setStatus(StatusTone.SUCCESS, "Selection loaded from " + region.getName() + ".");
+                    setStatus(StatusTone.SUCCESS, f("Selection loaded from %s.", "Виділення завантажено з %s.", region.getName()));
                 }
             }
             case "SetSpawn" -> {
                 if (!plugin.canManageSpawn(playerRef, region)) {
                     plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
-                    setStatus(StatusTone.ERROR, "You do not have permission to change this region's spawn point.");
+                    setStatus(StatusTone.ERROR, t("You do not have permission to change this region's spawn point.", "У вас немає дозволу змінювати точку спавну цього регіону."));
                 } else if (playerRef.getTransform() == null || playerRef.getTransform().getPosition() == null) {
                     plugin.send(playerRef, plugin.getConfigSnapshot().messages.teleportFailed);
-                    setStatus(StatusTone.ERROR, "Your current position is unavailable, so spawn cannot be set.");
+                    setStatus(StatusTone.ERROR, t("Your current position is unavailable, so spawn cannot be set.", "Ваша поточна позиція недоступна, тому точку спавну не можна встановити."));
                 } else {
                     BlockPos spawnPoint = new BlockPos(
                             (int) Math.floor(playerRef.getTransform().getPosition().getX()),
@@ -132,7 +136,7 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
                             "pos", spawnPoint.toString()
                     ));
                     plugin.playSuccessSound(playerRef);
-                    setStatus(StatusTone.SUCCESS, "Spawn point saved at " + spawnPoint + ".");
+                    setStatus(StatusTone.SUCCESS, f("Spawn point saved at %s.", "Точку спавну збережено на %s.", spawnPoint));
                 }
             }
             case "Members" -> {
@@ -146,13 +150,13 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
             case "Delete" -> {
                 if (!plugin.canManageRegion(playerRef, region)) {
                     plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
-                    setStatus(StatusTone.ERROR, "You do not have permission to delete this region.");
+                    setStatus(StatusTone.ERROR, t("You do not have permission to delete this region.", "У вас немає дозволу видалити цей регіон."));
                 } else if (plugin.hasChildRegions(region)) {
                     plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionDeleteHasChildren, Map.of("name", region.getName()));
-                    setStatus(StatusTone.ERROR, "Delete or move this region's child plots first.");
+                    setStatus(StatusTone.ERROR, t("Delete or move this region's child plots first.", "Спочатку видаліть або перемістіть дочірні ділянки цього регіону."));
                 } else if (!deleteArmed) {
                     deleteArmed = true;
-                    setStatus(StatusTone.WARNING, "Dangerous action armed. Press Delete Region again to confirm.");
+                    setStatus(StatusTone.WARNING, t("Dangerous action armed. Press Delete Region again to confirm.", "Небезпечну дію підготовлено. Натисніть Видалити регіон ще раз для підтвердження."));
                 } else if (plugin.deleteRegion(region)) {
                     plugin.send(playerRef, plugin.getConfigSnapshot().messages.regionDeleted, Map.of("name", region.getName()));
                     plugin.playDeleteSound(playerRef);
@@ -191,22 +195,22 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
 
         Region region = plugin.findRegionByName(worldName, regionName);
         if (region == null) {
-            cmd.set("#PageTitle.Text", "Region Missing");
-            cmd.set("#PageSubtitle.Text", "Region: " + regionName + " | World: " + worldName);
-            cmd.set("#SummaryOwner.Text", "n/a");
+            cmd.set("#PageTitle.Text", t("Region Missing", "Регіон відсутній"));
+            cmd.set("#PageSubtitle.Text", f("Region: %s | World: %s", "Регіон: %s | Світ: %s", regionName, worldName));
+            cmd.set("#SummaryOwner.Text", t("n/a", "н/д"));
             cmd.set("#SummaryPriority.Text", "0");
             cmd.set("#SummaryMembers.Text", "0");
-            cmd.set("#SummaryParent.Text", "Missing");
-            cmd.set("#SummarySpawn.Text", "n/a");
+            cmd.set("#SummaryParent.Text", t("Missing", "Відсутній"));
+            cmd.set("#SummarySpawn.Text", t("n/a", "н/д"));
             cmd.set("#NameValue.Text", regionName);
-            cmd.set("#OwnerValue.Text", "n/a");
+            cmd.set("#OwnerValue.Text", t("n/a", "н/д"));
             cmd.set("#WorldValue.Text", worldName);
-            cmd.set("#BoundsValue.Text", "missing");
+            cmd.set("#BoundsValue.Text", t("missing", "відсутні"));
             cmd.set("#MembersValue.Text", "0");
             cmd.set("#PriorityValue.Text", "0");
-            cmd.set("#HierarchyValue.Text", "missing");
-            cmd.set("#SpawnValue.Text", "n/a");
-            cmd.set("#DeleteHint.Text", "Region is missing.");
+            cmd.set("#HierarchyValue.Text", t("missing", "відсутня"));
+            cmd.set("#SpawnValue.Text", t("n/a", "н/д"));
+            cmd.set("#DeleteHint.Text", t("Region is missing.", "Регіон відсутній."));
             setActionAvailability(cmd, false, false, false, false);
             applyStatus(cmd);
             return;
@@ -219,14 +223,14 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
         setActionAvailability(cmd, canTeleport, canLoadSelection, canSetSpawn, canManage);
 
         cmd.set("#PageTitle.Text", region.getName());
-        cmd.set("#PageSubtitle.Text", "Region: " + region.getName() + " | World: " + region.getWorldId());
+        cmd.set("#PageSubtitle.Text", f("Region: %s | World: %s", "Регіон: %s | Світ: %s", region.getName(), region.getWorldId()));
         cmd.set("#SummaryOwner.Text", region.getOwnerName());
         cmd.set("#SummaryPriority.Text", String.valueOf(region.getPriority()));
         cmd.set("#SummaryMembers.Text", String.valueOf(region.getMembers().size()));
         cmd.set("#SummaryParent.Text", region.getParentRegionId() == null || region.getParentRegionId().isBlank()
-                ? "Root"
+                ? t("Root", "Корінь")
                 : plugin.getRegionNameById(region.getParentRegionId(), worldName));
-        cmd.set("#SummarySpawn.Text", region.getSpawnPoint() == null ? "Not set" : "Set");
+        cmd.set("#SummarySpawn.Text", region.getSpawnPoint() == null ? t("Not set", "Не задано") : t("Set", "Задано"));
         cmd.set("#NameValue.Text", region.getName());
         cmd.set("#OwnerValue.Text", region.getOwnerName());
         cmd.set("#WorldValue.Text", region.getWorldId());
@@ -234,37 +238,38 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
         cmd.set("#MembersValue.Text", String.valueOf(region.getMembers().size()));
         cmd.set("#PriorityValue.Text", String.valueOf(region.getPriority()));
         cmd.set("#HierarchyValue.Text", formatHierarchy(region));
-        cmd.set("#SpawnValue.Text", region.getSpawnPoint() == null ? "not set" : region.getSpawnPoint().toString());
-        cmd.set("#DeleteButton.Text", deleteArmed ? "Confirm Delete" : "Delete Region");
+        cmd.set("#SpawnValue.Text", region.getSpawnPoint() == null ? t("not set", "не задано") : region.getSpawnPoint().toString());
+        cmd.set("#DeleteButton.Text", deleteArmed ? t("Confirm Delete", "Підтвердити видалення") : t("Delete Region", "Видалити регіон"));
         cmd.set("#DeleteHint.Text", !canManage
-                ? "You may inspect this region, but deletion requires region-management permission."
+                ? t("You may inspect this region, but deletion requires region-management permission.", "Ви можете оглядати цей регіон, але для видалення потрібен дозвіл на керування регіоном.")
                 : deleteArmed
-                    ? "Press Delete Region again to permanently remove this region."
-                    : "Delete is isolated below because it permanently removes the region.");
+                    ? t("Press Delete Region again to permanently remove this region.", "Натисніть Видалити регіон ще раз, щоб остаточно видалити цей регіон.")
+                    : t("Delete is isolated below because it permanently removes the region.", "Кнопка видалення винесена окремо, бо вона безповоротно видаляє регіон."));
         applyStatus(cmd);
     }
 
     private String formatHierarchy(Region region) {
         if (region.getParentRegionId() == null || region.getParentRegionId().isBlank()) {
-            return "Root region";
+            return t("Root region", "Кореневий регіон");
         }
-        return "Child of " + plugin.getRegionNameById(region.getParentRegionId(), worldName);
+        return f("Child of %s", "Дочірній для %s", plugin.getRegionNameById(region.getParentRegionId(), worldName));
     }
 
     private String formatBounds(Region region) {
         if (region.isGlobal()) {
-            return "Global region covering the entire world.";
+            return t("Global region covering the entire world.", "Глобальний регіон, що покриває весь світ.");
         }
         if (region.getMin() == null || region.getMax() == null) {
-            return "missing";
+            return t("missing", "відсутні");
         }
         BlockPos min = region.getMin();
         BlockPos max = region.getMax();
         int width = max.getX() - min.getX() + 1;
         int height = max.getY() - min.getY() + 1;
         int depth = max.getZ() - min.getZ() + 1;
-        return String.format(Locale.ROOT,
+        return f(
                 "Min (%d, %d, %d) | Max (%d, %d, %d) | Size %dx%dx%d",
+                "Мін (%d, %d, %d) | Макс (%d, %d, %d) | Розмір %dx%dx%d",
                 min.getX(), min.getY(), min.getZ(),
                 max.getX(), max.getY(), max.getZ(),
                 width, height, depth);
@@ -300,5 +305,13 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
 
     private void bind(UIEventBuilder evt, String selector, String action) {
         evt.addEventBinding(CustomUIEventBindingType.Activating, selector, EventData.of("Action", action), false);
+    }
+
+    private String t(String english, String ukrainian) {
+        return UiText.choose(playerRef, english, ukrainian);
+    }
+
+    private String f(String english, String ukrainian, Object... args) {
+        return UiText.format(playerRef, english, ukrainian, args);
     }
 }

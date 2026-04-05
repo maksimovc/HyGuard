@@ -114,12 +114,8 @@ $C.@PageOverlay {
       Background: $Hg.@HgSurface;
       Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
 
-      Label #ActiveCategoryTitle { Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 180, Height: 18); }
-      Label #ActiveCategoryHint { Style: $Hg.@HgMetaStyle; Anchor: (Top: 22, Left: 0, Right: 0, Height: 18); }
-      Label #BodyHint { Style: $Hg.@HgMetaStyle; Anchor: (Top: 46, Left: 0, Right: 0, Height: 18); }
-
       Group #FlagScrollArea {
-        Anchor: (Top: 78, Left: 0, Right: 0, Bottom: 0);
+        Anchor: (Top: 0, Left: 0, Right: 0, Bottom: 0);
         LayoutMode: TopScrolling;
         ScrollbarStyle: $C.@DefaultScrollbarStyle;
 

@@ -27,7 +27,7 @@ public final class HyGuardAssetPack {
     private static final String PACK_ID = "thenexusgates:HyGuard";
     private static final String PACK_GROUP = "thenexusgates";
     private static final String PACK_NAME = "HyGuard";
-    private static final String PACK_VERSION = "1.0.0";
+    private static final String PACK_VERSION = "1.0.9";
     private static final String TARGET_SERVER_VERSION = "2026.03.26-89796e57b";
     private static final String PACK_DIRECTORY_NAME = "thenexusgates_HyGuard";
     private static final String DATA_DIRECTORY_NAME = "thenexusgates_HyGuardData";

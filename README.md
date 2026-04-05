@@ -2,7 +2,7 @@
 
 HyGuard is a Hytale server protection mod focused on cuboid regions, server-owned and player-owned claims, world-scoped fallback protection through `__global__`, JSON persistence, offline player lookup, scheduled backups, runtime asset-pack bootstrapping, and in-game management through commands and `InteractiveCustomUIPage` screens.
 
-The current release line is `1.0.0`. Build output is `build/libs/HyGuard-1.0.0.jar`.
+The current release line is `1.0.9`. Build output is `build/libs/HyGuard-1.0.9.jar`.
 
 ## Requirements
 
@@ -328,10 +328,10 @@ call gradlew.bat clean build
 Expected artifact:
 
 ```text
-build/libs/HyGuard-1.0.0.jar
+build/libs/HyGuard-1.0.9.jar
 ```
 
-Manifest version and Gradle jar naming are aligned to `1.0.0`.
+Manifest version and Gradle jar naming are aligned to `1.0.9`.
 
 ## Typical Admin Workflows
 

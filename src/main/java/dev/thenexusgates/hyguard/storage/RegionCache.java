@@ -70,13 +70,6 @@ public final class RegionCache {
 
     public List<Region> getRegionsAt(String worldId, BlockPos blockPos) {
         ArrayList<Region> regions = new ArrayList<>();
-        for (String regionId : globalRegions.getOrDefault(normalize(worldId), List.of())) {
-            Region region = byId.get(regionId);
-            if (region != null) {
-                regions.add(region);
-            }
-        }
-
         ConcurrentHashMap<Long, List<String>> worldIndex = chunkIndex.get(normalize(worldId));
         if (worldIndex != null) {
             long chunkKey = GeometryUtils.chunkKey(blockPos.getX() >> 4, blockPos.getZ() >> 4);
@@ -87,6 +80,15 @@ public final class RegionCache {
                     if (region != null && region.contains(blockPos)) {
                         regions.add(region);
                     }
+                }
+            }
+        }
+
+        if (regions.isEmpty()) {
+            for (String regionId : globalRegions.getOrDefault(normalize(worldId), List.of())) {
+                Region region = byId.get(regionId);
+                if (region != null) {
+                    regions.add(region);
                 }
             }
         }
@@ -199,7 +201,9 @@ public final class RegionCache {
 
         Region best = null;
         for (Region candidate : worldRegions) {
-            if (candidate.getId().equals(child.getId()) || !GeometryUtils.contains(candidate, child)) {
+            if (candidate.isGlobal()
+                    || candidate.getId().equals(child.getId())
+                    || !GeometryUtils.contains(candidate, child)) {
                 continue;
             }
             if (best == null

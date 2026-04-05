@@ -34,21 +34,23 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
     }
 
     private enum FlagCategory {
-        BLOCKS("Blocks"),
-        PLAYERS("Players"),
-        MOBS("Mobs"),
-        ENVIRONMENT("Environment"),
-        ENTRY_EXIT("Entry / Exit"),
-        SPECIAL("Special");
+        BLOCKS("Blocks", "Блоки"),
+        PLAYERS("Players", "Гравці"),
+        MOBS("Mobs", "Моби"),
+        ENVIRONMENT("Environment", "Середовище"),
+        ENTRY_EXIT("Entry / Exit", "Вхід / Вихід"),
+        SPECIAL("Special", "Особливе");
 
-        private final String title;
+        private final String englishTitle;
+        private final String ukrainianTitle;
 
-        FlagCategory(String title) {
-            this.title = title;
+        FlagCategory(String englishTitle, String ukrainianTitle) {
+            this.englishTitle = englishTitle;
+            this.ukrainianTitle = ukrainianTitle;
         }
 
-        public String title() {
-            return title;
+        public String title(PlayerRef playerRef) {
+            return UiText.choose(playerRef, englishTitle, ukrainianTitle);
         }
     }
 
@@ -77,7 +79,6 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
     }
 
     private static final String UI_PAGE = "Pages/HyGuardFlagEditor.ui";
-    private static final String UI_SECTION_ROW = "Pages/HyGuardFlagSectionRow.ui";
     private static final String UI_FLAG_ROW = "Pages/HyGuardFlagRow.ui";
     private static final String UI_TEXT_ROW = "Pages/HyGuardFlagTextRow.ui";
     private static final String UI_ACTION_ROW = "Pages/HyGuardFlagActionRow.ui";
@@ -108,7 +109,7 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
     private String searchInput = "";
     private String gameModeInput = "";
     private FlagCategory selectedCategory = FlagCategory.BLOCKS;
-    private String statusMessage = "Choose a category on the left, then adjust rules on the right.";
+    private String statusMessage;
     private StatusTone statusTone = StatusTone.INFO;
 
     public FlagEditorPage(PlayerRef playerRef, HyGuardPlugin plugin, String worldName, String regionName) {
@@ -116,6 +117,10 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
         this.plugin = plugin;
         this.worldName = worldName;
         this.regionName = regionName;
+        this.statusMessage = t(
+                "Choose a category on the left, then adjust rules on the right.",
+                "Оберіть категорію ліворуч, а потім змінюйте правила праворуч."
+        );
     }
 
     @Override
@@ -207,20 +212,20 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
 
     private void selectCategory(FlagCategory category) {
         selectedCategory = category;
-        setStatus(StatusTone.INFO, "Viewing " + category.title() + " flags.");
+        setStatus(StatusTone.INFO, f("Viewing %s flags.", "Перегляд прапорів категорії %s.", category.title(playerRef)));
     }
 
     private void applyModeFlag(Region region, String action) {
         if (!plugin.canManageRegion(playerRef, region)) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
-            setStatus(StatusTone.ERROR, "You do not have permission to edit flags in this region.");
+            setStatus(StatusTone.ERROR, t("You do not have permission to edit flags in this region.", "У вас немає дозволу редагувати прапори в цьому регіоні."));
             return;
         }
 
         String[] parts = action.split("\\|", 3);
         if (parts.length != 3) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlagValue);
-            setStatus(StatusTone.ERROR, "The flag action payload was malformed.");
+            setStatus(StatusTone.ERROR, t("The flag action payload was malformed.", "Пакет дії прапора має неправильний формат."));
             return;
         }
 
@@ -228,7 +233,7 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
         RegionFlagValue.Mode mode = parseMode(parts[2]);
         if (flag == null || mode == null) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlagValue);
-            setStatus(StatusTone.ERROR, "This flag mode is not valid.");
+            setStatus(StatusTone.ERROR, t("This flag mode is not valid.", "Цей режим прапора недійсний."));
             return;
         }
 
@@ -240,27 +245,27 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
                 "value", mode.name()
         ));
         plugin.playSuccessSound(playerRef);
-        setStatus(StatusTone.SUCCESS, RegionUiText.displayFlag(flag) + " updated to " + mode.name().toLowerCase(Locale.ROOT) + ".");
+        setStatus(StatusTone.SUCCESS, f("%s updated to %s.", "%s оновлено до %s.", RegionUiText.displayFlag(playerRef, flag), RegionUiText.displayMode(playerRef, mode)));
     }
 
     private void applyTextFlag(Region region, String action) {
         if (!plugin.canManageRegion(playerRef, region)) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
-            setStatus(StatusTone.ERROR, "You do not have permission to edit flags in this region.");
+            setStatus(StatusTone.ERROR, t("You do not have permission to edit flags in this region.", "У вас немає дозволу редагувати прапори в цьому регіоні."));
             return;
         }
 
         String[] parts = action.split("\\|", 2);
         if (parts.length != 2) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlag);
-            setStatus(StatusTone.ERROR, "The text flag payload was malformed.");
+            setStatus(StatusTone.ERROR, t("The text flag payload was malformed.", "Пакет текстового прапора має неправильний формат."));
             return;
         }
 
         RegionFlag flag = parseFlag(parts[1]);
         if (flag == null || !TEXT_FLAGS.contains(flag)) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlag);
-            setStatus(StatusTone.ERROR, "This flag cannot be edited as text.");
+            setStatus(StatusTone.ERROR, t("This flag cannot be edited as text.", "Цей прапор не можна редагувати як текст."));
             return;
         }
 
@@ -273,30 +278,30 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
                     "flag", flag.name()
             ));
                 plugin.playSuccessSound(playerRef);
-            setStatus(StatusTone.SUCCESS, RegionUiText.displayFlag(flag) + " was cleared.");
+                setStatus(StatusTone.SUCCESS, f("%s was cleared.", "%s очищено.", RegionUiText.displayFlag(playerRef, flag)));
             return;
         }
 
         if (flag == RegionFlag.GAME_MODE && plugin.parseConfiguredGameMode(textValue) == null) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlagValue);
-            setStatus(StatusTone.ERROR, "Game mode must be Adventure or Creative.");
+                setStatus(StatusTone.ERROR, t("Game mode must be Adventure or Creative.", "Режим гри має бути Adventure або Creative."));
             return;
         }
         if (flag == RegionFlag.WEATHER_LOCK && plugin.parseConfiguredWeatherLock(textValue) == null) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlagValue);
-            setStatus(StatusTone.ERROR, "Weather lock must be a weather index or one of: clear, rain, storm.");
+                setStatus(StatusTone.ERROR, t("Weather lock must be a weather index or one of: clear, rain, storm.", "Фіксація погоди має бути індексом погоди або одним із значень: clear, rain, storm."));
             return;
         }
         if (flag == RegionFlag.TIME_LOCK && plugin.parseConfiguredTimeLock(textValue) == null) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlagValue);
-            setStatus(StatusTone.ERROR, "Time lock must be written as HH or HH:MM.");
+                setStatus(StatusTone.ERROR, t("Time lock must be written as HH or HH:MM.", "Фіксацію часу треба вказувати у форматі HH або HH:MM."));
             return;
         }
         if (flag == RegionFlag.COMMAND_BLACKLIST) {
             textValue = plugin.sanitizeCommandBlacklist(textValue);
             if (textValue.isBlank()) {
                 plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlagValue);
-                setStatus(StatusTone.ERROR, "Command blacklist must contain at least one command pattern.");
+                    setStatus(StatusTone.ERROR, t("Command blacklist must contain at least one command pattern.", "Чорний список команд має містити хоча б один шаблон команди."));
                 return;
             }
         }
@@ -310,18 +315,18 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
                 "value", textValue
         ));
         plugin.playSuccessSound(playerRef);
-        setStatus(StatusTone.SUCCESS, RegionUiText.displayFlag(flag) + " saved.");
+        setStatus(StatusTone.SUCCESS, f("%s saved.", "%s збережено.", RegionUiText.displayFlag(playerRef, flag)));
     }
 
     private void applyGameMode(Region region, String modeName) {
         if (!plugin.canManageRegion(playerRef, region)) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
-            setStatus(StatusTone.ERROR, "You do not have permission to edit flags in this region.");
+            setStatus(StatusTone.ERROR, t("You do not have permission to edit flags in this region.", "У вас немає дозволу редагувати прапори в цьому регіоні."));
             return;
         }
         if (plugin.parseConfiguredGameMode(modeName) == null) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlagValue);
-            setStatus(StatusTone.ERROR, "Game mode must be Adventure or Creative.");
+            setStatus(StatusTone.ERROR, t("Game mode must be Adventure or Creative.", "Режим гри має бути Adventure або Creative."));
             return;
         }
 
@@ -334,27 +339,27 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
                 "value", modeName
         ));
         plugin.playSuccessSound(playerRef);
-        setStatus(StatusTone.SUCCESS, "Game mode lock updated to " + capitalize(modeName) + ".");
+        setStatus(StatusTone.SUCCESS, f("Game mode lock updated to %s.", "Фіксацію режиму гри оновлено до %s.", RegionUiText.displayConfiguredGameMode(playerRef, modeName)));
     }
 
     private void clearFlag(Region region, String action) {
         if (!plugin.canManageRegion(playerRef, region)) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.noPermission);
-            setStatus(StatusTone.ERROR, "You do not have permission to edit flags in this region.");
+            setStatus(StatusTone.ERROR, t("You do not have permission to edit flags in this region.", "У вас немає дозволу редагувати прапори в цьому регіоні."));
             return;
         }
 
         String[] parts = action.split("\\|", 2);
         if (parts.length != 2) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlag);
-            setStatus(StatusTone.ERROR, "The clear action payload was malformed.");
+            setStatus(StatusTone.ERROR, t("The clear action payload was malformed.", "Пакет очищення має неправильний формат."));
             return;
         }
 
         RegionFlag flag = parseFlag(parts[1]);
         if (flag == null) {
             plugin.send(playerRef, plugin.getConfigSnapshot().messages.invalidFlag);
-            setStatus(StatusTone.ERROR, "This flag does not exist.");
+            setStatus(StatusTone.ERROR, t("This flag does not exist.", "Цей прапор не існує."));
             return;
         }
 
@@ -366,7 +371,7 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
                 "flag", flag.name()
         ));
         plugin.playSuccessSound(playerRef);
-        setStatus(StatusTone.SUCCESS, RegionUiText.displayFlag(flag) + " was cleared.");
+        setStatus(StatusTone.SUCCESS, f("%s was cleared.", "%s очищено.", RegionUiText.displayFlag(playerRef, flag)));
     }
 
     private void refresh(Ref<EntityStore> entityRef, Store<EntityStore> store) {
@@ -393,14 +398,9 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
         bindValue(evt, "#SearchInput", "@SearchInput");
 
         Region region = plugin.findRegionByName(worldName, regionName);
-        cmd.set("#PageTitle.Text", region == null ? "Flag Editor" : "Flag Editor - " + region.getName());
-        cmd.set("#Subtitle.Text", "Region: " + regionName + " | World: " + worldName + " | Search or switch categories to focus the rule set.");
-        cmd.set("#BodyHint.Text", "Use Allow, Deny, or Inherit for rule flags. Message fields save explicit values.");
+        cmd.set("#PageTitle.Text", region == null ? t("Flag Editor", "Редактор прапорів") : f("Flag Editor - %s", "Редактор прапорів - %s", region.getName()));
+        cmd.set("#Subtitle.Text", f("Region: %s | World: %s | Search or switch categories to focus the rule set.", "Регіон: %s | Світ: %s | Шукайте або перемикайте категорії, щоб зосередитися на потрібному наборі правил.", regionName, worldName));
         cmd.set("#SearchInput.Value", searchInput == null ? "" : searchInput);
-        cmd.set("#ActiveCategoryTitle.Text", selectedCategory.title());
-        cmd.set("#ActiveCategoryHint.Text", normalizedSearch().isBlank()
-                ? "Showing all " + selectedCategory.title() + " flags."
-                : "Filtered by \"" + searchInput.trim() + "\" inside " + selectedCategory.title() + ".");
         applyCategoryState(cmd);
         applyStatus(cmd);
 
@@ -413,11 +413,10 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
         int index = 0;
         List<RegionFlag> visibleFlags = filteredFlagsForSelectedCategory();
         if (visibleFlags.isEmpty()) {
-            appendInfoRow(cmd, index, "No flags match this filter.", "Change the search text or pick a different category.");
+            appendInfoRow(cmd, index, t("No flags match this filter.", "Жоден прапор не відповідає цьому фільтру."), t("Change the search text or pick a different category.", "Змініть текст пошуку або виберіть іншу категорію."));
             return;
         }
 
-        index = appendSectionHeader(cmd, index, selectedCategory.title() + " Rules");
         for (RegionFlag flag : visibleFlags) {
             if (flag == RegionFlag.ENTRY_BLACKLIST) {
                 appendEntryBlacklistRow(cmd, evt, index++, region);
@@ -436,13 +435,6 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
         cmd.set(rowId + " #InfoDetail.Text", detail);
     }
 
-    private int appendSectionHeader(UICommandBuilder cmd, int index, String title) {
-        cmd.append(GROUP_ROOT, UI_SECTION_ROW);
-        String rowId = GROUP_ROOT + "[" + index + "]";
-        cmd.set(rowId + " #SectionTitle.Text", title);
-        return index + 1;
-    }
-
     private void appendModeRow(UICommandBuilder cmd,
                                UIEventBuilder evt,
                                int index,
@@ -454,9 +446,10 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
         RegionFlagValue.Mode currentMode = value == null ? RegionFlagValue.Mode.INHERIT : value.getMode();
         boolean editable = plugin.canManageRegion(playerRef, region);
 
-        cmd.set(rowId + " #FlagName.Text", RegionUiText.displayFlag(flag));
-        cmd.set(rowId + " #FlagDescription.Text", RegionUiText.flagDescription(flag));
-        cmd.set(rowId + " #ModeHint.Text", RegionUiText.flagModeHint(flag, currentMode));
+        cmd.set(rowId + " #FlagName.Text", RegionUiText.displayFlag(playerRef, flag));
+        cmd.set(rowId + " #FlagDescription.Text", RegionUiText.flagDescription(playerRef, flag));
+        cmd.set(rowId + " #ModeHint.Text", RegionUiText.flagModeHint(playerRef, flag, currentMode));
+        cmd.set(rowId + " #ReadOnlyHint.Text", t("Read only: you can inspect this flag, but you cannot change it.", "Лише перегляд: ви можете оглянути цей прапор, але не можете його змінити."));
         cmd.set(rowId + " #AllowSelected.Visible", currentMode == RegionFlagValue.Mode.ALLOW);
         cmd.set(rowId + " #DenySelected.Visible", currentMode == RegionFlagValue.Mode.DENY);
         cmd.set(rowId + " #InheritSelected.Visible", currentMode == RegionFlagValue.Mode.INHERIT);
@@ -480,10 +473,11 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
         boolean editable = plugin.canManageRegion(playerRef, region);
         boolean isGameMode = flag == RegionFlag.GAME_MODE;
 
-        cmd.set(rowId + " #FlagName.Text", RegionUiText.displayFlag(flag));
-        cmd.set(rowId + " #FlagDescription.Text", RegionUiText.textFlagHelper(flag));
+        cmd.set(rowId + " #FlagName.Text", RegionUiText.displayFlag(playerRef, flag));
+        cmd.set(rowId + " #FlagDescription.Text", RegionUiText.textFlagHelper(playerRef, flag));
         cmd.set(rowId + " #FlagTextInput.Value", inputValue);
-        cmd.set(rowId + " #FlagTextInput.PlaceholderText", RegionUiText.textFlagPlaceholder(flag));
+        cmd.set(rowId + " #FlagTextInput.PlaceholderText", RegionUiText.textFlagPlaceholder(playerRef, flag));
+        cmd.set(rowId + " #ReadOnlyHint.Text", t("Read only: you can inspect this flag, but you cannot change it.", "Лише перегляд: ви можете оглянути цей прапор, але не можете його змінити."));
         cmd.set(rowId + " #InputShell.Visible", !isGameMode);
         cmd.set(rowId + " #PresetRow.Visible", isGameMode);
         cmd.set(rowId + " #SaveBtn.Visible", editable && !isGameMode);
@@ -507,8 +501,13 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
 
         RegionFlagValue value = region.getFlags().get(flag);
         boolean hasValue = value != null && value.getTextValue() != null && !value.getTextValue().isBlank();
-        String currentValue = hasValue ? value.getTextValue() : "Not set";
-        cmd.set(rowId + " #CurrentValue.Text", isGameMode ? "Current enforced mode: " + currentValue : "Current value: " + currentValue);
+        String currentValue = hasValue ? value.getTextValue() : t("Not set", "Не задано");
+        if (isGameMode && hasValue) {
+            currentValue = RegionUiText.displayConfiguredGameMode(playerRef, currentValue);
+        }
+        cmd.set(rowId + " #CurrentValue.Text", isGameMode
+                ? f("Current enforced mode: %s", "Поточний примусовий режим: %s", currentValue)
+                : f("Current value: %s", "Поточне значення: %s", currentValue));
     }
 
     private void appendEntryBlacklistRow(UICommandBuilder cmd,
@@ -523,17 +522,17 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
                 .limit(3)
                 .map(HyGuardPlugin.PlayerIdentity::username)
                 .reduce((left, right) -> left + ", " + right)
-                .orElse("No players are currently blocked from entering this region.");
+            .orElse(t("No players are currently blocked from entering this region.", "Наразі жодному гравцю не заборонено входити в цей регіон."));
         if (blacklist.size() > 3) {
-            preview += " +" + (blacklist.size() - 3) + " more";
+            preview += f(" +%d more", " +ще %d", blacklist.size() - 3);
         }
 
-        cmd.set(rowId + " #FlagName.Text", RegionUiText.displayFlag(RegionFlag.ENTRY_BLACKLIST));
-        cmd.set(rowId + " #FlagDescription.Text", RegionUiText.flagDescription(RegionFlag.ENTRY_BLACKLIST));
+        cmd.set(rowId + " #FlagName.Text", RegionUiText.displayFlag(playerRef, RegionFlag.ENTRY_BLACKLIST));
+        cmd.set(rowId + " #FlagDescription.Text", RegionUiText.flagDescription(playerRef, RegionFlag.ENTRY_BLACKLIST));
         cmd.set(rowId + " #SummaryText.Text", preview);
         cmd.set(rowId + " #CurrentValue.Text", blacklist.isEmpty()
-                ? "Current value: empty blacklist"
-                : "Current value: " + blacklist.size() + " blocked player(s)");
+            ? t("Current value: empty blacklist", "Поточне значення: чорний список порожній")
+            : f("Current value: %d blocked player(s)", "Поточне значення: %d заблокованих гравців", blacklist.size()));
         cmd.set(rowId + " #ActionButton.Visible", editable);
         cmd.set(rowId + " #ActionButtonDisabled.Visible", !editable);
         cmd.set(rowId + " #ClearBtn.Visible", editable && !blacklist.isEmpty());
@@ -578,7 +577,9 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
 
     private boolean matchesFilter(RegionFlag flag, String query) {
         return RegionUiText.displayFlag(flag).toLowerCase(Locale.ROOT).contains(query)
+                || RegionUiText.displayFlag(playerRef, flag).toLowerCase(Locale.ROOT).contains(query)
                 || RegionUiText.flagDescription(flag).toLowerCase(Locale.ROOT).contains(query)
+                || RegionUiText.flagDescription(playerRef, flag).toLowerCase(Locale.ROOT).contains(query)
                 || flag.name().toLowerCase(Locale.ROOT).contains(query);
     }
 
@@ -722,18 +723,19 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
         }
     }
 
-    private String capitalize(String text) {
-        if (text == null || text.isBlank()) {
-            return "";
-        }
-        return Character.toUpperCase(text.charAt(0)) + text.substring(1);
-    }
-
     private void bindClick(UIEventBuilder evt, String selector, String action) {
         evt.addEventBinding(CustomUIEventBindingType.Activating, selector, EventData.of("Action", action), false);
     }
 
     private void bindValue(UIEventBuilder evt, String selector, String key) {
         evt.addEventBinding(CustomUIEventBindingType.ValueChanged, selector, EventData.of(key, selector + ".Value"), false);
+    }
+
+    private String t(String english, String ukrainian) {
+        return UiText.choose(playerRef, english, ukrainian);
+    }
+
+    private String f(String english, String ukrainian, Object... args) {
+        return UiText.format(playerRef, english, ukrainian, args);
     }
 }

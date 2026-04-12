@@ -66,8 +66,8 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
         this.worldName = worldName;
         this.regionName = regionName;
         this.statusMessage = t(
-                "Select a member to manage their role, or add a new player on the right.",
-                "Оберіть учасника, щоб керувати його роллю, або додайте нового гравця праворуч."
+            "Manage access here.",
+            "Керуйте доступом тут."
         );
     }
 
@@ -102,7 +102,7 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
 
         switch (data.action) {
             case "Back" -> {
-                plugin.openRegionDetail(store, entityRef, playerRef, worldName, regionName);
+                plugin.openRegionWorkspace(store, entityRef, playerRef, worldName, regionName, RegionWorkspacePage.WorkspaceTab.ACCESS, RegionWorkspacePage.AccessMode.MEMBERS);
                 return;
             }
             case "Close" -> {
@@ -127,8 +127,8 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
                 MemberEntry selected = getSelectedEntry(region);
                 if (selected != null) {
                     setStatus(StatusTone.INFO, selected.owner()
-                            ? f("%s is the owner and cannot be demoted or removed here.", "%s є власником і не може бути знижений або видалений тут.", selected.name())
-                            : f("Selected %s. Use the action panel to promote, demote, or remove them.", "Вибрано %s. Використовуйте панель дій, щоб підвищити, знизити або видалити цього гравця.", selected.name()));
+                            ? f("%s is owner.", "%s є власником.", selected.name())
+                            : f("Selected: %s", "Вибрано: %s", selected.name()));
                 }
             }
         }
@@ -139,8 +139,8 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
     private void pickRole(RegionRole role) {
         selectedAddRole = role;
         setStatus(StatusTone.INFO, f(
-                "New or updated members will be assigned as %s.",
-                "Нові або оновлені учасники отримають роль %s.",
+                "Role: %s",
+                "Роль: %s",
                 RegionUiText.displayRole(playerRef, role)
         ));
     }
@@ -334,7 +334,7 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
         bindValue(evt, "#AddMemberInput", "@AddMemberInput");
 
         cmd.set("#PageTitle.Text", f("Member Manager - %s", "Керування учасниками - %s", regionName));
-        cmd.set("#Subtitle.Text", f("Region: %s | World: %s | Add members with the role picker instead of typing raw enum names.", "Регіон: %s | Світ: %s | Додавайте учасників через вибір ролі замість введення сирих назв enum.", regionName, worldName));
+        cmd.set("#Subtitle.Text", f("Region: %s | World: %s", "Регіон: %s | Світ: %s", regionName, worldName));
         cmd.set("#AddMemberInput.Value", addMemberInput == null ? "" : addMemberInput);
         cmd.set("#AddHint.Text", RegionUiText.roleDescription(playerRef, selectedAddRole));
         applyStatus(cmd);
@@ -368,20 +368,20 @@ public final class MemberManagerPage extends InteractiveCustomUIPage<MemberManag
         cmd.set("#SelectedName.Text", selected == null ? t("No member selected", "Учасника не вибрано") : selected.name());
         cmd.set("#SelectedRole.Text", selected == null ? t("Choose a row from the left", "Виберіть рядок ліворуч") : RegionUiText.displayRole(playerRef, selected.role()));
         cmd.set("#SelectionHint.Text", selected == null
-                ? t("Select a member row to promote, demote, or remove that player.", "Виберіть рядок учасника, щоб підвищити, знизити або видалити цього гравця.")
+                ? t("Pick a row.", "Виберіть рядок.")
                 : selected.owner()
-                    ? t("Owner can be viewed but not removed or demoted from this menu.", "Власника можна переглядати, але не можна видалити або знизити з цього меню.")
+                    ? t("Owner is locked.", "Власник заблокований.")
                     : RegionUiText.roleDescription(playerRef, selected.role()));
         cmd.set("#RemoveButtonLabel.Text", removeArmed && canRemove ? t("Confirm Remove", "Підтвердити видалення") : t("Remove Member", "Видалити учасника"));
         cmd.set("#RemoveHint.Text", !hasPermission
-                ? t("You can inspect members here, but you lack permission to change them.", "Ви можете переглядати учасників тут, але не маєте дозволу змінювати їх.")
+                ? t("Locked", "Заблоковано")
                 : removeArmed && canRemove
-                    ? t("Dangerous action armed. Press Remove Member again to confirm.", "Небезпечну дію підготовлено. Натисніть Видалити учасника ще раз для підтвердження.")
+                    ? t("Press again to remove.", "Натисніть ще раз для видалення.")
                     : selected != null && selected.owner()
-                        ? t("Owner is locked and cannot be removed.", "Власник заблокований і не може бути видалений.")
+                        ? t("Owner is locked.", "Власник заблокований.")
                         : selected == null
-                            ? t("Select a member to unlock management actions.", "Виберіть учасника, щоб розблокувати дії керування.")
-                            : t("Promote and Demote move the selected member by one role step.", "Підвищити та Знизити змінюють роль вибраного учасника на один щабель."));
+                            ? t("Pick a member.", "Виберіть учасника.")
+                            : t("Use the buttons above.", "Скористайтеся кнопками вище."));
     }
 
     private void renderMembers(UICommandBuilder cmd,

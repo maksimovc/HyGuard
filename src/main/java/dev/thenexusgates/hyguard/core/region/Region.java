@@ -94,6 +94,17 @@ public final class Region {
         return members == null ? Collections.emptyMap() : members;
     }
 
+    public Map<String, String> getMetadata() {
+        return metadata == null ? Collections.emptyMap() : metadata;
+    }
+
+    public String getMetadataValue(String key) {
+        if (key == null || key.isBlank() || metadata == null) {
+            return null;
+        }
+        return metadata.get(key);
+    }
+
     public RegionMember getMember(String uuid) {
         if (uuid == null || members == null) {
             return null;
@@ -224,5 +235,29 @@ public final class Region {
             touch();
         }
         return removed;
+    }
+
+    public void putMetadata(String key, String value) {
+        if (key == null || key.isBlank()) {
+            return;
+        }
+        if (metadata == null) {
+            metadata = new HashMap<>();
+        }
+        if (value == null || value.isBlank()) {
+            metadata.remove(key);
+        } else {
+            metadata.put(key, value);
+        }
+        touch();
+    }
+
+    public void removeMetadata(String key) {
+        if (key == null || key.isBlank() || metadata == null) {
+            return;
+        }
+        if (metadata.remove(key) != null) {
+            touch();
+        }
     }
 }

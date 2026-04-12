@@ -129,15 +129,11 @@ public final class RegionBrowserPage extends InteractiveCustomUIPage<RegionBrows
 
         if (regions.isEmpty()) {
             addRow(cmd, evt, 0,
+                t("Empty", "Порожньо"),
                 childBrowserMode
-                    ? t("No child regions found", "Внутрішніх регіонів не знайдено")
-                    : t("No regions found", "Регіонів не знайдено"),
-                childBrowserMode
-                    ? t("This region does not have internal child plots.", "У цього регіону ще немає внутрішніх дочірніх ділянок.")
-                    : t("Create one with /hg create <name>", "Створіть регіон через /hg create <name>"),
-                childBrowserMode
-                    ? t("When this parent region gains internal claims, they will appear in this separate list.", "Коли в цього батьківського регіону з'являться внутрішні ділянки, вони з'являться в цьому окремому списку.")
-                    : t("The browser will list regions here once the world has at least one saved region.", "Браузер покаже регіони тут, щойно у світі з'явиться хоча б один збережений регіон."),
+                    ? t("No child regions", "Немає вкладених регіонів")
+                    : t("No regions yet", "Регіонів ще немає"),
+                childBrowserMode ? "" : t("Use /hg create <name>", "Використайте /hg create <name>"),
                     null,
                     null,
                     null);
@@ -170,28 +166,26 @@ public final class RegionBrowserPage extends InteractiveCustomUIPage<RegionBrows
                                      boolean noWorldRegions,
                                      List<Region> regions) {
         if (childBrowserMode) {
-            return regions.isEmpty()
-                    ? f("No internal regions exist for %s.", "Для %s внутрішніх регіонів не існує.", parentRegionName)
-                    : f("Internal regions of %s.", "Внутрішні регіони %s.", parentRegionName);
+            return f("Inside %s", "Всередині %s", parentRegionName);
         }
         if (allWorldsMode) {
             return noWorldRegions
-                    ? t("No regions are defined in any loaded world yet.", "У жодному завантаженому світі ще немає визначених регіонів.")
-                    : t("Browse parent regions across every loaded world.", "Переглядайте батьківські регіони в усіх завантажених світах.");
+                    ? t("No regions", "Немає регіонів")
+                    : t("All worlds", "Усі світи");
         }
         return noWorldRegions
-                ? t("No regions are defined in this world yet.", "У цьому світі ще немає визначених регіонів.")
-                : t("Browse parent regions. Open child plots only when you need to manage them separately.", "Переглядайте батьківські регіони. Відкривайте дочірні ділянки лише тоді, коли треба керувати ними окремо.");
+                ? t("No regions", "Немає регіонів")
+                : t("Regions", "Регіони");
     }
 
     private String describeHelpText(boolean childBrowserMode, boolean allWorldsMode) {
         if (childBrowserMode) {
-            return t("Child plots are shown here separately so the main browser stays focused on parent regions.", "Дочірні ділянки показуються тут окремо, щоб головний браузер залишався зосередженим на батьківських регіонах.");
+            return t("Pick a child region.", "Виберіть вкладений регіон.");
         }
         if (allWorldsMode) {
-            return t("This browser now merges saved regions from every world. Open any card to manage it in its own world context.", "Цей браузер тепер об'єднує збережені регіони з усіх світів. Відкрийте будь-яку картку, щоб керувати нею в її власному контексті світу.");
+            return t("Open any region.", "Відкрийте будь-який регіон.");
         }
-        return t("Use /hg create <name> after making a selection to add a new region.", "Використайте /hg create <name> після виділення, щоб додати новий регіон.");
+        return t("Open a region or create one.", "Відкрийте регіон або створіть новий.");
     }
 
     private void addRegionRow(UICommandBuilder cmd,
@@ -202,12 +196,12 @@ public final class RegionBrowserPage extends InteractiveCustomUIPage<RegionBrows
                               boolean allWorldsMode) {
         String title = formatRegionTitle(region, childBrowserMode);
         String subtitle = allWorldsMode
-            ? f("World: %s | Owner: %s", "Світ: %s | Власник: %s", region.getWorldId(), region.getOwnerName())
-            : f("Owner: %s", "Власник: %s", region.getOwnerName());
+            ? f("%s | %s", "%s | %s", region.getWorldId(), region.getOwnerName())
+            : region.getOwnerName();
         String detail = formatRegionDetail(region, allWorldsMode);
         List<Region> childRegions = plugin.getDisplayChildRegions(region);
         String childAction = childRegions.isEmpty() ? null : "Children:" + region.getId();
-        String childLabel = childRegions.isEmpty() ? null : f("Child plots (%d)", "Дочірні ділянки (%d)", childRegions.size());
+        String childLabel = childRegions.isEmpty() ? null : f("Inside (%d)", "Вкладені (%d)", childRegions.size());
         addRow(cmd, evt, index, title, subtitle, detail, "Region:" + region.getId(), childAction, childLabel);
     }
 
@@ -221,26 +215,21 @@ public final class RegionBrowserPage extends InteractiveCustomUIPage<RegionBrows
     private String formatRegionDetail(Region region, boolean allWorldsMode) {
         StringBuilder detail = new StringBuilder();
         if (region.isGlobal()) {
-            detail.append(t("Global region", "Глобальний регіон"));
+            detail.append(t("Global", "Глобальний"));
         } else if (region.getParentRegionId() == null || region.getParentRegionId().isBlank()) {
-            detail.append(t("Root region", "Кореневий регіон"));
+            detail.append(t("Root", "Корінь"));
         } else {
-            detail.append(t("Child of ", "Дочірній для "))
-                    .append(plugin.getRegionNameById(region.getParentRegionId(), worldName));
+            detail.append(t("Child", "Вкладений"));
         }
 
-        if (allWorldsMode) {
-            detail.append(t(" | World: ", " | Світ: ")).append(region.getWorldId());
-        }
-
-        detail.append(t(" | Priority: ", " | Пріоритет: "))
+        detail.append(" | P:")
                 .append(region.getPriority())
-                .append(t(" | Members: ", " | Учасники: "))
+                .append(" | M:")
                 .append(region.getMembers().size());
 
         int childCount = plugin.getDisplayChildRegions(region).size();
         if (childCount > 0) {
-            detail.append(t(" | Children: ", " | Дочірні: ")).append(childCount);
+            detail.append(" | C:").append(childCount);
         }
         return detail.toString();
     }
@@ -257,7 +246,7 @@ public final class RegionBrowserPage extends InteractiveCustomUIPage<RegionBrows
         cmd.append(GROUP_ROOT, UI_ROW);
         String rowId = GROUP_ROOT + "[" + index + "]";
         cmd.set(rowId + " #RowTitle.Text", title);
-        cmd.set(rowId + " #RowHint.Text", action == null ? t("Info", "Інфо") : t("Open region", "Відкрити регіон"));
+        cmd.set(rowId + " #RowHint.Text", action == null ? t("Info", "Інфо") : t("Open", "Відкрити"));
         cmd.set(rowId + " #RowSubtitle.Text", subtitle == null ? "" : subtitle);
         cmd.set(rowId + " #RowDetail.Text", detail == null ? "" : detail);
         cmd.set(rowId + " #ChildrenButton.Visible", childAction != null);

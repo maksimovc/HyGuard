@@ -1,0 +1,120 @@
+$C = "../Common.ui";
+$Hg = "HyGuardShared.ui";
+
+$C.@PageOverlay {
+  $C.@Container {
+    Anchor: (Width: 1120, Height: 760);
+    Background: $Hg.@HgPanelBackground;
+
+    Button #BackButton {
+      Anchor: (Top: 24, Left: 28, Width: 102, Height: 42);
+      Style: $Hg.@HgSecondaryButtonStyle;
+      Label { Text: "Назад"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+    }
+
+    Label #PageTitle {
+      Text: "Map Settings";
+      Style: $Hg.@HgTitleStyle;
+      Anchor: (Top: 28, Left: 148, Right: 148, Height: 26);
+    }
+
+    Label #PageSubtitle {
+      Style: $Hg.@HgMetaStyle;
+      Anchor: (Top: 58, Left: 148, Right: 148, Height: 24);
+    }
+
+    Button #CloseIconButton {
+      Anchor: (Top: 24, Right: 28, Width: 42, Height: 42);
+      Style: $Hg.@HgSecondaryButtonStyle;
+      Label { Text: "X"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+    }
+
+    Group #StatusCard {
+      Anchor: (Top: 108, Left: 28, Right: 28, Height: 54);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 12, Bottom: 12, Left: 18, Right: 18);
+
+      Group #StatusInfo { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgPrimary; Visible: false; }
+      Group #StatusSuccess { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgPositive; Visible: false; }
+      Group #StatusWarning { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgDangerHover; Visible: false; }
+      Group #StatusError { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgDanger; Visible: false; }
+
+      Label #StatusText { Style: $Hg.@HgBodyStyle; Anchor: (Top: 12, Left: 18, Right: 0, Height: 18); }
+    }
+
+    Group #PaletteCard {
+      Anchor: (Top: 180, Left: 28, Right: 360, Bottom: 28);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
+
+      Label { Text: "Колір"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
+
+      Group {
+        Anchor: (Top: 34, Left: 0, Right: 0, Height: 110);
+        Background: $Hg.@HgSurfaceAlt;
+        Padding: (Top: 10, Bottom: 10, Left: 12, Right: 12);
+
+        Group #PreviewColor {
+          Anchor: (Top: 0, Left: 0, Width: 88, Bottom: 0);
+          Background: #2f7c9f;
+        }
+
+        Label { Text: "Preview"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 0, Left: 108, Width: 64, Height: 14); }
+        Label #CurrentPreviewHex { Style: $Hg.@HgBodyStyle; Anchor: (Top: 20, Left: 108, Width: 120, Height: 18); }
+
+        Label { Text: "HEX"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 0, Left: 252, Width: 44, Height: 14); }
+        TextField #HexInput {
+          Anchor: (Top: 18, Left: 252, Width: 146, Height: 34);
+          Style: $Hg.@HgInputStyle;
+          PlaceholderText: "068F4B";
+          PlaceholderStyle: $C.@DefaultInputFieldPlaceholderStyle;
+          Background: $Hg.@HgInputBackground;
+        }
+
+        Button #ApplyCustomColorButton {
+          Anchor: (Top: 18, Right: 0, Width: 122, Height: 34);
+          Style: $Hg.@HgPrimaryButtonStyle;
+          Label { Text: "Застосувати"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        }
+
+        Label { Text: "6 hex символів."; Style: $Hg.@HgMetaStyle; Anchor: (Top: 62, Left: 108, Right: 0, Height: 18); }
+      }
+    }
+
+    Group #VisibilityCard {
+      Anchor: (Top: 180, Right: 28, Width: 320, Bottom: 28);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
+
+      Label { Text: "Видимість"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
+      Label { Text: "Показ, приховування і скидання."; Style: $Hg.@HgMetaStyle; Anchor: (Top: 22, Left: 0, Right: 0, Height: 32); }
+
+      Button #EnableButton {
+        Anchor: (Top: 92, Left: 0, Right: 0, Height: 42);
+        Style: $Hg.@HgPositiveButtonStyle;
+        Label { Text: "Показати"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #EnableSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #DisableButton {
+        Anchor: (Top: 146, Left: 0, Right: 0, Height: 42);
+        Style: $Hg.@HgNeutralButtonStyle;
+        Label { Text: "Сховати"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #DisableSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #ResetButton {
+        Anchor: (Top: 214, Left: 0, Right: 0, Height: 42);
+        Style: $Hg.@HgPrimaryButtonStyle;
+        Label { Text: "Скинути"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+      }
+
+      Label #ReadOnlyHint {
+        Text: "Тільки перегляд.";
+        Style: $Hg.@HgMetaStyle;
+        Anchor: (Top: 276, Left: 0, Right: 0, Height: 54);
+        Visible: false;
+      }
+    }
+  }
+}

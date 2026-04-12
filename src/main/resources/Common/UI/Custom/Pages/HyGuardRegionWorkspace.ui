@@ -1,0 +1,306 @@
+$C = "../Common.ui";
+$Hg = "HyGuardShared.ui";
+
+$C.@PageOverlay {
+  $C.@Container {
+    Anchor: (Width: 1120, Height: 760);
+    Background: $Hg.@HgPanelBackground;
+
+    TextButton #BackButton {
+      Anchor: (Top: 24, Left: 28, Width: 102, Height: 42);
+      Text: "Назад";
+      Style: $Hg.@HgSecondaryTextButtonStyle;
+    }
+
+    Label {
+      Text: "HyGuard";
+      Style: $Hg.@HgMetaStyle;
+      Anchor: (Top: 28, Left: 150, Height: 18);
+    }
+
+    Label #PageTitle {
+      Style: $Hg.@HgTitleStyle;
+      Anchor: (Top: 48, Left: 150, Right: 150, Height: 26);
+    }
+
+    Label #PageSubtitle {
+      Style: $Hg.@HgMetaStyle;
+      Anchor: (Top: 78, Left: 150, Right: 150, Height: 18);
+    }
+
+    TextButton #CloseIconButton {
+      Anchor: (Top: 24, Right: 28, Width: 42, Height: 42);
+      Text: "X";
+      Style: $Hg.@HgSecondaryTextButtonStyle;
+    }
+
+    Group #StatusCard {
+      Anchor: (Top: 114, Left: 28, Right: 28, Height: 54);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 12, Bottom: 12, Left: 18, Right: 18);
+
+      Group #StatusInfo { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgPrimary; Visible: false; }
+      Group #StatusSuccess { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgPositive; Visible: false; }
+      Group #StatusWarning { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgDangerHover; Visible: false; }
+      Group #StatusError { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgDanger; Visible: false; }
+
+      Label #StatusText {
+        Style: $Hg.@HgBodyStyle;
+        Anchor: (Top: 12, Left: 18, Right: 0, Height: 18);
+      }
+    }
+
+    Group #SummaryCard {
+      Anchor: (Top: 184, Left: 28, Right: 28, Height: 92);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 10, Bottom: 10, Left: 18, Right: 18);
+
+      Group {
+        Anchor: (Top: 0, Left: 0, Width: 180, Height: 64);
+        Background: $Hg.@HgSurfaceAlt;
+        Padding: (Top: 10, Bottom: 10, Left: 12, Right: 12);
+        Label { Text: "Owner"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 0, Left: 0, Right: 0, Height: 14); }
+        Label #SummaryOwner { Style: $Hg.@HgBodyStyle; Anchor: (Top: 24, Left: 0, Right: 0, Height: 18); }
+      }
+
+      Group {
+        Anchor: (Top: 0, Left: 194, Width: 150, Height: 64);
+        Background: $Hg.@HgSurfaceAlt;
+        Padding: (Top: 10, Bottom: 10, Left: 12, Right: 12);
+        Label { Text: "Priority"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 0, Left: 0, Right: 0, Height: 14); }
+        Label #SummaryPriority { Style: $Hg.@HgBodyStyle; Anchor: (Top: 24, Left: 0, Right: 0, Height: 18); }
+      }
+
+      Group {
+        Anchor: (Top: 0, Left: 358, Width: 150, Height: 64);
+        Background: $Hg.@HgSurfaceAlt;
+        Padding: (Top: 10, Bottom: 10, Left: 12, Right: 12);
+        Label { Text: "Members"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 0, Left: 0, Right: 0, Height: 14); }
+        Label #SummaryMembers { Style: $Hg.@HgBodyStyle; Anchor: (Top: 24, Left: 0, Right: 0, Height: 18); }
+      }
+
+      Group {
+        Anchor: (Top: 0, Left: 522, Width: 220, Height: 64);
+        Background: $Hg.@HgSurfaceAlt;
+        Padding: (Top: 10, Bottom: 10, Left: 12, Right: 12);
+        Label { Text: "Parent"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 0, Left: 0, Right: 0, Height: 14); }
+        Label #SummaryParent { Style: $Hg.@HgBodyStyle; Anchor: (Top: 24, Left: 0, Right: 0, Height: 18); }
+      }
+
+      Group {
+        Anchor: (Top: 0, Right: 0, Width: 300, Height: 64);
+        Background: $Hg.@HgSurfaceAlt;
+        Padding: (Top: 10, Bottom: 10, Left: 12, Right: 12);
+        Label { Text: "Map"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 0, Left: 0, Right: 0, Height: 14); }
+        Label #SummaryMap { Style: $Hg.@HgBodyStyle; Anchor: (Top: 24, Left: 0, Right: 0, Height: 18); }
+      }
+    }
+
+    Group #TabsCard {
+      Anchor: (Top: 294, Left: 28, Right: 28, Height: 58);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 10, Bottom: 10, Left: 18, Right: 18);
+
+      Button #OverviewTabButton {
+        Anchor: (Top: 0, Left: 0, Width: 150, Height: 38);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Огляд"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #OverviewTabSelected { Anchor: (Left: 12, Right: 12, Bottom: 2, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #AccessTabButton {
+        Anchor: (Top: 0, Left: 162, Width: 150, Height: 38);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Доступ"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #AccessTabSelected { Anchor: (Left: 12, Right: 12, Bottom: 2, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #RulesTabButton {
+        Anchor: (Top: 0, Left: 324, Width: 150, Height: 38);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Правила"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #RulesTabSelected { Anchor: (Left: 12, Right: 12, Bottom: 2, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #MapTabButton {
+        Anchor: (Top: 0, Left: 486, Width: 150, Height: 38);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Мапа"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #MapTabSelected { Anchor: (Left: 12, Right: 12, Bottom: 2, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+    }
+
+    Group #ContentCard {
+      Anchor: (Top: 368, Left: 28, Right: 270, Bottom: 28);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
+
+      Group #OverviewPanel {
+        Anchor: (Full: 0);
+        Visible: false;
+
+        Label { Text: "Паспорт"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
+        Label { Text: "Назва"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 34, Left: 0, Width: 84, Height: 16); }
+        Label #NameValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 54, Left: 0, Right: 0, Height: 18); }
+        Label { Text: "Власник"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 84, Left: 0, Width: 84, Height: 16); }
+        Label #OwnerValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 104, Left: 0, Right: 0, Height: 18); }
+        Label { Text: "Світ"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 134, Left: 0, Width: 84, Height: 16); }
+        Label #WorldValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 154, Left: 0, Right: 0, Height: 18); }
+        Label { Text: "Спавн"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 184, Left: 0, Width: 84, Height: 16); }
+        Label #SpawnValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 204, Left: 0, Right: 0, Height: 34); }
+
+        Label { Text: "Координати"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 258, Left: 0, Width: 100, Height: 16); }
+        Label #BoundsValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 278, Left: 0, Right: 0, Height: 54); }
+
+        Label { Text: "Учасники"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 352, Left: 0, Width: 90, Height: 16); }
+        Label #MembersValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 372, Left: 0, Width: 140, Height: 18); }
+        Label { Text: "Пріоритет"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 352, Left: 180, Width: 90, Height: 16); }
+        Label #PriorityValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 372, Left: 180, Width: 120, Height: 18); }
+
+        Label { Text: "Ієрархія"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 410, Left: 0, Width: 90, Height: 16); }
+        Label #HierarchyValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 430, Left: 0, Right: 0, Height: 34); }
+      }
+
+      Group #AccessPanel {
+        Anchor: (Full: 0);
+        Visible: false;
+
+        Label { Text: "Доступ"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
+
+        Button #AccessMembersModeButton {
+          Anchor: (Top: 32, Left: 0, Width: 140, Height: 38);
+          Style: $Hg.@HgTabButtonStyle;
+          Label { Text: "Учасники"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+          Group #AccessMembersModeSelected { Anchor: (Left: 12, Right: 12, Bottom: 2, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+        }
+
+        Button #AccessBlacklistModeButton {
+          Anchor: (Top: 32, Left: 152, Width: 170, Height: 38);
+          Style: $Hg.@HgTabButtonStyle;
+          Label { Text: "Чорний список"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+          Group #AccessBlacklistModeSelected { Anchor: (Left: 12, Right: 12, Bottom: 2, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+        }
+
+        Label { Text: "Зведення"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 96, Left: 0, Width: 90, Height: 16); }
+        Label #AccessSummaryValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 116, Left: 0, Right: 0, Height: 34); }
+
+        Label { Text: "Режим"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 172, Left: 0, Width: 90, Height: 16); }
+        Label #AccessSelectedName { Style: $Hg.@HgBodyStyle; Anchor: (Top: 192, Left: 0, Right: 0, Height: 18); }
+        Label #AccessSelectedDetail { Style: $Hg.@HgMetaStyle; Anchor: (Top: 220, Left: 0, Right: 0, Height: 44); }
+
+        TextButton #OpenMembersButton {
+          Anchor: (Top: 290, Left: 0, Width: 190, Height: 42);
+          Text: "Керувати учасниками";
+          Style: $Hg.@HgPrimaryTextButtonStyle;
+        }
+
+        TextButton #OpenBlacklistButton {
+          Anchor: (Top: 290, Left: 206, Width: 220, Height: 42);
+          Text: "Керувати blacklist";
+          Style: $Hg.@HgSecondaryTextButtonStyle;
+        }
+      }
+
+      Group #RulesPanel {
+        Anchor: (Full: 0);
+        Visible: false;
+
+        Label { Text: "Правила"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
+        Label { Text: "Зведення"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 34, Left: 0, Width: 90, Height: 16); }
+        Label #RulesSummaryValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 54, Left: 0, Right: 0, Height: 18); }
+        Label { Text: "Стан"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 88, Left: 0, Width: 90, Height: 16); }
+        Label #RulesCategoryValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 108, Left: 0, Right: 0, Height: 18); }
+        Label #RulesHintValue { Style: $Hg.@HgMetaStyle; Anchor: (Top: 140, Left: 0, Right: 0, Height: 44); }
+
+        TextButton #OpenRulesButton {
+          Anchor: (Top: 212, Left: 0, Width: 170, Height: 42);
+          Text: "Відкрити правила";
+          Style: $Hg.@HgPrimaryTextButtonStyle;
+        }
+      }
+
+      Group #MapPanel {
+        Anchor: (Full: 0);
+        Visible: false;
+
+        Label { Text: "Мапа"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
+        Label { Text: "Видимість"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 34, Left: 0, Width: 90, Height: 16); }
+        Label #MapVisibleValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 54, Left: 0, Right: 0, Height: 18); }
+        Label { Text: "Колір"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 88, Left: 0, Width: 90, Height: 16); }
+        Group #MapPreviewColor {
+          Anchor: (Top: 116, Left: 0, Width: 54, Height: 54);
+          Background: #404040;
+        }
+        Label #MapColorValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 132, Left: 74, Right: 0, Height: 18); }
+        Label #MapHintValue { Style: $Hg.@HgMetaStyle; Anchor: (Top: 188, Left: 0, Right: 0, Height: 44); }
+
+        TextButton #OpenMapButton {
+          Anchor: (Top: 260, Left: 0, Width: 160, Height: 42);
+          Text: "Відкрити мапу";
+          Style: $Hg.@HgPrimaryTextButtonStyle;
+        }
+      }
+    }
+
+    Group #QuickCard {
+      Anchor: (Top: 368, Right: 28, Width: 224, Bottom: 28);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
+
+      Label { Text: "Дії"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 100, Height: 18); }
+
+      TextButton #TeleportButton {
+        Anchor: (Top: 36, Left: 0, Right: 0, Height: 42);
+        Text: "Телепорт";
+        Style: $Hg.@HgPrimaryTextButtonStyle;
+      }
+      Group #TeleportButtonDisabled {
+        Anchor: (Top: 36, Left: 0, Right: 0, Height: 42);
+        Background: $Hg.@HgSurfaceDisabled;
+        Visible: false;
+        Label { Text: "Телепорт"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+      }
+
+      TextButton #SelectButton {
+        Anchor: (Top: 88, Left: 0, Right: 0, Height: 42);
+        Text: "Виділення";
+        Style: $Hg.@HgSecondaryTextButtonStyle;
+      }
+      Group #SelectButtonDisabled {
+        Anchor: (Top: 88, Left: 0, Right: 0, Height: 42);
+        Background: $Hg.@HgSurfaceDisabled;
+        Visible: false;
+        Label { Text: "Виділення"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+      }
+
+      TextButton #SetSpawnButton {
+        Anchor: (Top: 140, Left: 0, Right: 0, Height: 42);
+        Text: "Спавн";
+        Style: $Hg.@HgSecondaryTextButtonStyle;
+      }
+      Group #SetSpawnButtonDisabled {
+        Anchor: (Top: 140, Left: 0, Right: 0, Height: 42);
+        Background: $Hg.@HgSurfaceDisabled;
+        Visible: false;
+        Label { Text: "Спавн"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+      }
+
+      TextButton #DeleteButton {
+        Anchor: (Top: 212, Left: 0, Right: 0, Height: 42);
+        Text: "Видалити";
+        Style: $Hg.@HgDangerTextButtonStyle;
+      }
+      Group #DeleteButtonDisabled {
+        Anchor: (Top: 212, Left: 0, Right: 0, Height: 42);
+        Background: $Hg.@HgSurfaceDisabled;
+        Visible: false;
+        Label { Text: "Видалити"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+      }
+
+      Label #DeleteHint {
+        Style: $Hg.@HgMetaStyle;
+        Anchor: (Top: 264, Left: 0, Right: 0, Height: 36);
+      }
+    }
+  }
+}

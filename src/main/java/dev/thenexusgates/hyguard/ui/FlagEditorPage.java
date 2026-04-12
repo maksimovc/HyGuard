@@ -118,8 +118,8 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
         this.worldName = worldName;
         this.regionName = regionName;
         this.statusMessage = t(
-                "Choose a category on the left, then adjust rules on the right.",
-                "Оберіть категорію ліворуч, а потім змінюйте правила праворуч."
+            "Edit region rules.",
+            "Змінюйте правила регіону."
         );
     }
 
@@ -175,7 +175,7 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
 
         switch (data.action) {
             case "Back" -> {
-                plugin.openRegionDetail(store, entityRef, playerRef, worldName, regionName);
+                plugin.openRegionWorkspace(store, entityRef, playerRef, worldName, regionName, RegionWorkspacePage.WorkspaceTab.RULES);
                 return;
             }
             case "Close" -> {
@@ -212,7 +212,7 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
 
     private void selectCategory(FlagCategory category) {
         selectedCategory = category;
-        setStatus(StatusTone.INFO, f("Viewing %s flags.", "Перегляд прапорів категорії %s.", category.title(playerRef)));
+        setStatus(StatusTone.INFO, f("Category: %s", "Категорія: %s", category.title(playerRef)));
     }
 
     private void applyModeFlag(Region region, String action) {
@@ -399,7 +399,7 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
 
         Region region = plugin.findRegionByName(worldName, regionName);
         cmd.set("#PageTitle.Text", region == null ? t("Flag Editor", "Редактор прапорів") : f("Flag Editor - %s", "Редактор прапорів - %s", region.getName()));
-        cmd.set("#Subtitle.Text", f("Region: %s | World: %s | Search or switch categories to focus the rule set.", "Регіон: %s | Світ: %s | Шукайте або перемикайте категорії, щоб зосередитися на потрібному наборі правил.", regionName, worldName));
+        cmd.set("#Subtitle.Text", f("Region: %s | World: %s", "Регіон: %s | Світ: %s", regionName, worldName));
         cmd.set("#SearchInput.Value", searchInput == null ? "" : searchInput);
         applyCategoryState(cmd);
         applyStatus(cmd);
@@ -413,7 +413,7 @@ public final class FlagEditorPage extends InteractiveCustomUIPage<FlagEditorPage
         int index = 0;
         List<RegionFlag> visibleFlags = filteredFlagsForSelectedCategory();
         if (visibleFlags.isEmpty()) {
-            appendInfoRow(cmd, index, t("No flags match this filter.", "Жоден прапор не відповідає цьому фільтру."), t("Change the search text or pick a different category.", "Змініть текст пошуку або виберіть іншу категорію."));
+            appendInfoRow(cmd, index, t("No matches", "Нічого не знайдено"), t("Change the filter.", "Змініть фільтр."));
             return;
         }
 

@@ -1,48 +1,48 @@
 $Hg = "HyGuardShared.ui";
 
 Group {
-  Anchor: (Left: 4, Right: 4, Height: 104, Bottom: 10);
+  Anchor: (Left: 4, Right: 4, Height: 92, Bottom: 8);
   Background: $Hg.@HgSurfaceAlt;
   Padding: (Top: 12, Bottom: 12, Left: 14, Right: 14);
 
   Label #FlagName {
-    Anchor: (Top: 0, Left: 0, Right: 332, Height: 18);
+    Anchor: (Top: 0, Left: 0, Right: 320, Height: 18);
     Style: (FontSize: 13, TextColor: #f3f9fd, RenderBold: true, VerticalAlignment: Center);
   }
 
   Label #FlagDescription {
-    Anchor: (Top: 24, Left: 0, Right: 332, Height: 30);
+    Anchor: (Top: 22, Left: 0, Right: 320, Height: 26);
     Style: (FontSize: 12, TextColor: #aac1cf, Wrap: true);
   }
 
   Label #ModeHint {
-    Anchor: (Top: 66, Left: 0, Right: 332, Height: 16);
+    Anchor: (Top: 56, Left: 0, Right: 320, Height: 14);
     Style: (FontSize: 11, TextColor: #d5ebfb, VerticalAlignment: Center);
   }
 
   Label #ReadOnlyHint {
-    Anchor: (Top: 84, Left: 0, Right: 332, Height: 16);
+    Anchor: (Top: 72, Left: 0, Right: 320, Height: 14);
     Style: (FontSize: 11, TextColor: #d7a19f, VerticalAlignment: Center);
     Text: "Read only: you can inspect this flag, but you cannot change it.";
     Visible: false;
   }
 
   Button #AllowBtn {
-    Anchor: (Top: 18, Right: 224, Width: 96, Height: 42);
+    Anchor: (Top: 18, Right: 208, Width: 92, Height: 40);
     Style: $Hg.@HgPositiveButtonStyle;
     Label { Text: "Allow"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
     Group #AllowSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: #ffffff; Visible: false; }
   }
 
   Button #DenyBtn {
-    Anchor: (Top: 18, Right: 112, Width: 96, Height: 42);
+    Anchor: (Top: 18, Right: 104, Width: 92, Height: 40);
     Style: $Hg.@HgDangerButtonStyle;
     Label { Text: "Deny"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
     Group #DenySelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: #ffffff; Visible: false; }
   }
 
   Button #InheritBtn {
-    Anchor: (Top: 18, Right: 0, Width: 96, Height: 42);
+    Anchor: (Top: 18, Right: 0, Width: 92, Height: 40);
     Style: $Hg.@HgNeutralButtonStyle;
     Label { Text: "Inherit"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
     Group #InheritSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: #ffffff; Visible: false; }

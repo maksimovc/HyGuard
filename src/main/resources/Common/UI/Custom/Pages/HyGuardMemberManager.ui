@@ -9,7 +9,7 @@ $C.@PageOverlay {
     Button #BackButton {
       Anchor: (Top: 24, Left: 28, Width: 102, Height: 42);
       Style: $Hg.@HgSecondaryButtonStyle;
-      Label { Text: "Back"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+      Label { Text: "Назад"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
     }
 
     Label #PageTitle {
@@ -30,7 +30,7 @@ $C.@PageOverlay {
     }
 
     Group #StatusCard {
-      Anchor: (Top: 108, Left: 28, Right: 28, Height: 60);
+      Anchor: (Top: 108, Left: 28, Right: 28, Height: 54);
       Background: $Hg.@HgSurface;
       Padding: (Top: 12, Bottom: 12, Left: 18, Right: 18);
 
@@ -39,16 +39,15 @@ $C.@PageOverlay {
       Group #StatusWarning { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgDangerHover; Visible: false; }
       Group #StatusError { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgDanger; Visible: false; }
 
-      Label { Text: "Status"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 18, Width: 80, Height: 16); }
-      Label #StatusText { Style: $Hg.@HgBodyStyle; Anchor: (Top: 22, Left: 18, Right: 0, Height: 18); }
+      Label #StatusText { Style: $Hg.@HgBodyStyle; Anchor: (Top: 12, Left: 18, Right: 0, Height: 18); }
     }
 
     Group #MembersPanel {
-      Anchor: (Top: 186, Left: 28, Width: 380, Bottom: 28);
+      Anchor: (Top: 180, Left: 28, Width: 392, Bottom: 28);
       Background: $Hg.@HgSurface;
       Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
 
-      Label { Text: "Members"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
+      Label { Text: "Учасники"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
       Label #OwnerValue { Style: $Hg.@HgMetaStyle; Anchor: (Top: 24, Left: 0, Right: 0, Height: 18); }
 
       Group #MemberScrollArea {
@@ -63,12 +62,12 @@ $C.@PageOverlay {
     }
 
     Group #AddCard {
-      Anchor: (Top: 186, Left: 426, Right: 28, Height: 258);
+      Anchor: (Top: 180, Left: 438, Right: 28, Height: 248);
       Background: $Hg.@HgSurface;
       Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
 
-      Label { Text: "Add or update member"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 180, Height: 18); }
-      Label { Text: "Player"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 34, Left: 0, Width: 80, Height: 16); }
+      Label { Text: "Доступ"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
+      Label { Text: "Гравець"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 34, Left: 0, Width: 80, Height: 16); }
 
       Group {
         Anchor: (Top: 54, Left: 0, Right: 176, Height: 40);
@@ -80,7 +79,7 @@ $C.@PageOverlay {
         TextField #AddMemberInput {
           Anchor: (Full: 0);
           Style: $Hg.@HgInputStyle;
-          PlaceholderText: "Player username";
+          PlaceholderText: "Ім'я гравця";
           PlaceholderStyle: $C.@DefaultInputFieldPlaceholderStyle;
         }
       }
@@ -88,17 +87,17 @@ $C.@PageOverlay {
       Button #AddMemberButton {
         Anchor: (Top: 54, Right: 0, Width: 160, Height: 40);
         Style: $Hg.@HgPrimaryButtonStyle;
-        Label { Text: "Add / Update"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Label { Text: "Додати / змінити"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
       }
 
       Button #AddMemberButtonDisabled {
         Anchor: (Top: 54, Right: 0, Width: 160, Height: 40);
         Style: $Hg.@HgSecondaryButtonStyle;
         Visible: false;
-        Label { Text: "Manage locked"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+        Label { Text: "Заблоковано"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
       }
 
-      Label { Text: "Role"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 112, Left: 0, Width: 60, Height: 16); }
+      Label { Text: "Роль"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 112, Left: 0, Width: 60, Height: 16); }
       Label #SelectedRolePreview { Style: $Hg.@HgMetaStyle; Anchor: (Top: 112, Left: 76, Right: 0, Height: 16); }
 
       Button #RoleCoOwnerButton {
@@ -138,62 +137,62 @@ $C.@PageOverlay {
 
       Label #AddHint {
         Style: $Hg.@HgMetaStyle;
-        Anchor: (Top: 230, Left: 0, Right: 0, Height: 18);
+        Anchor: (Top: 228, Left: 0, Right: 0, Height: 18);
       }
     }
 
     Group #SelectedCard {
-      Anchor: (Top: 462, Left: 426, Right: 28, Bottom: 28);
+      Anchor: (Top: 446, Left: 438, Right: 28, Bottom: 28);
       Background: $Hg.@HgSurface;
       Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
 
-      Label { Text: "Selected member"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 180, Height: 18); }
+      Label { Text: "Вибраний"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 140, Height: 18); }
       Label #SelectedName { Style: $Hg.@HgBodyStyle; Anchor: (Top: 34, Left: 0, Right: 0, Height: 22); }
       Label #SelectedRole { Style: $Hg.@HgMetaStyle; Anchor: (Top: 62, Left: 0, Right: 0, Height: 18); }
       Label #SelectionHint { Style: $Hg.@HgMetaStyle; Anchor: (Top: 92, Left: 0, Right: 0, Height: 34); }
 
       Button #PromoteButton {
-        Anchor: (Top: 150, Left: 0, Width: 170, Height: 42);
+        Anchor: (Top: 142, Left: 0, Width: 164, Height: 42);
         Style: $Hg.@HgPrimaryButtonStyle;
-        Label { Text: "Promote"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Label { Text: "Підвищити"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
       }
 
       Button #PromoteButtonDisabled {
-        Anchor: (Top: 150, Left: 0, Width: 170, Height: 42);
+        Anchor: (Top: 142, Left: 0, Width: 164, Height: 42);
         Style: $Hg.@HgSecondaryButtonStyle;
         Visible: false;
-        Label { Text: "Promote locked"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+        Label { Text: "Заблоковано"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
       }
 
       Button #DemoteButton {
-        Anchor: (Top: 150, Left: 184, Width: 170, Height: 42);
+        Anchor: (Top: 142, Left: 178, Width: 164, Height: 42);
         Style: $Hg.@HgSecondaryButtonStyle;
-        Label { Text: "Demote"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Label { Text: "Знизити"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
       }
 
       Button #DemoteButtonDisabled {
-        Anchor: (Top: 150, Left: 184, Width: 170, Height: 42);
+        Anchor: (Top: 142, Left: 178, Width: 164, Height: 42);
         Style: $Hg.@HgSecondaryButtonStyle;
         Visible: false;
-        Label { Text: "Demote locked"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+        Label { Text: "Заблоковано"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
       }
 
       Button #RemoveButton {
-        Anchor: (Top: 150, Left: 368, Width: 170, Height: 42);
+        Anchor: (Top: 142, Left: 356, Width: 164, Height: 42);
         Style: $Hg.@HgDangerButtonStyle;
-        Label #RemoveButtonLabel { Text: "Remove Member"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Label #RemoveButtonLabel { Text: "Прибрати"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
       }
 
       Button #RemoveButtonDisabled {
-        Anchor: (Top: 150, Left: 368, Width: 170, Height: 42);
+        Anchor: (Top: 142, Left: 356, Width: 164, Height: 42);
         Style: $Hg.@HgSecondaryButtonStyle;
         Visible: false;
-        Label { Text: "Remove locked"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+        Label { Text: "Заблоковано"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
       }
 
       Label #RemoveHint {
         Style: $Hg.@HgMetaStyle;
-        Anchor: (Top: 206, Left: 0, Right: 0, Height: 34);
+        Anchor: (Top: 196, Left: 0, Right: 0, Height: 34);
       }
     }
   }

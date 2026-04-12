@@ -8,12 +8,12 @@ $C.@PageOverlay {
 
     TextButton #BackButton {
       Anchor: (Top: 24, Left: 28, Width: 102, Height: 42);
-      Text: "Back";
+      Text: "Назад";
       Style: $Hg.@HgSecondaryTextButtonStyle;
     }
 
     Label {
-      Text: "HyGuard Region";
+      Text: "HyGuard";
       Style: $Hg.@HgMetaStyle;
       Anchor: (Top: 28, Left: 150, Height: 18);
     }
@@ -35,7 +35,7 @@ $C.@PageOverlay {
     }
 
     Group #StatusCard {
-      Anchor: (Top: 114, Left: 28, Right: 28, Height: 60);
+      Anchor: (Top: 114, Left: 28, Right: 28, Height: 54);
       Background: $Hg.@HgSurface;
       Padding: (Top: 12, Bottom: 12, Left: 18, Right: 18);
 
@@ -63,25 +63,19 @@ $C.@PageOverlay {
         Visible: false;
       }
 
-      Label {
-        Text: "Status";
-        Style: $Hg.@HgSectionTitleStyle;
-        Anchor: (Top: 0, Left: 18, Width: 80, Height: 16);
-      }
-
       Label #StatusText {
         Style: $Hg.@HgBodyStyle;
-        Anchor: (Top: 22, Left: 18, Right: 0, Height: 18);
+        Anchor: (Top: 12, Left: 18, Right: 0, Height: 18);
       }
     }
 
     Group #SummaryCard {
-      Anchor: (Top: 190, Left: 28, Right: 28, Height: 100);
+      Anchor: (Top: 184, Left: 28, Right: 28, Height: 92);
       Background: $Hg.@HgSurface;
-      Padding: (Top: 14, Bottom: 14, Left: 18, Right: 18);
+      Padding: (Top: 10, Bottom: 10, Left: 18, Right: 18);
 
       Group {
-        Anchor: (Top: 0, Left: 0, Width: 180, Height: 72);
+        Anchor: (Top: 0, Left: 0, Width: 180, Height: 64);
         Background: $Hg.@HgSurfaceAlt;
         Padding: (Top: 10, Bottom: 10, Left: 12, Right: 12);
         Label { Text: "Owner"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 0, Left: 0, Right: 0, Height: 14); }
@@ -89,7 +83,7 @@ $C.@PageOverlay {
       }
 
       Group {
-        Anchor: (Top: 0, Left: 194, Width: 140, Height: 72);
+        Anchor: (Top: 0, Left: 194, Width: 150, Height: 64);
         Background: $Hg.@HgSurfaceAlt;
         Padding: (Top: 10, Bottom: 10, Left: 12, Right: 12);
         Label { Text: "Priority"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 0, Left: 0, Right: 0, Height: 14); }
@@ -97,7 +91,7 @@ $C.@PageOverlay {
       }
 
       Group {
-        Anchor: (Top: 0, Left: 348, Width: 140, Height: 72);
+        Anchor: (Top: 0, Left: 358, Width: 150, Height: 64);
         Background: $Hg.@HgSurfaceAlt;
         Padding: (Top: 10, Bottom: 10, Left: 12, Right: 12);
         Label { Text: "Members"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 0, Left: 0, Right: 0, Height: 14); }
@@ -105,7 +99,7 @@ $C.@PageOverlay {
       }
 
       Group {
-        Anchor: (Top: 0, Left: 502, Width: 220, Height: 72);
+        Anchor: (Top: 0, Left: 522, Width: 220, Height: 64);
         Background: $Hg.@HgSurfaceAlt;
         Padding: (Top: 10, Bottom: 10, Left: 12, Right: 12);
         Label { Text: "Parent"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 0, Left: 0, Right: 0, Height: 14); }
@@ -113,7 +107,7 @@ $C.@PageOverlay {
       }
 
       Group {
-        Anchor: (Top: 0, Right: 0, Width: 160, Height: 72);
+        Anchor: (Top: 0, Right: 0, Width: 170, Height: 64);
         Background: $Hg.@HgSurfaceAlt;
         Padding: (Top: 10, Bottom: 10, Left: 12, Right: 12);
         Label { Text: "Spawn"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 0, Left: 0, Right: 0, Height: 14); }
@@ -121,140 +115,127 @@ $C.@PageOverlay {
       }
     }
 
-    Group #Details {
-      Anchor: (Top: 308, Left: 28, Width: 494, Height: 250);
+    Group #ActionCard {
+      Anchor: (Top: 294, Left: 28, Right: 28, Height: 132);
       Background: $Hg.@HgSurface;
       Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
 
-      Label { Text: "Details"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
-
-      Label { Text: "Name"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 34, Left: 0, Width: 84, Height: 16); }
-      Label #NameValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 54, Left: 0, Right: 0, Height: 18); }
-
-      Label { Text: "Owner"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 84, Left: 0, Width: 84, Height: 16); }
-      Label #OwnerValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 104, Left: 0, Right: 0, Height: 18); }
-
-      Label { Text: "World"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 134, Left: 0, Width: 84, Height: 16); }
-      Label #WorldValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 154, Left: 0, Right: 0, Height: 18); }
-
-      Label { Text: "Spawn"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 184, Left: 0, Width: 84, Height: 16); }
-      Label #SpawnValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 204, Left: 0, Right: 0, Height: 18); }
-    }
-
-    Group #BoundsCard {
-      Anchor: (Top: 308, Left: 538, Right: 28, Height: 250);
-      Background: $Hg.@HgSurface;
-      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
-
-      Label { Text: "Bounds & Hierarchy"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 180, Height: 18); }
-
-      Label { Text: "Bounds"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 34, Left: 0, Width: 90, Height: 16); }
-      Label #BoundsValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 54, Left: 0, Right: 0, Height: 54); }
-
-      Label { Text: "Members"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 122, Left: 0, Width: 90, Height: 16); }
-      Label #MembersValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 142, Left: 0, Width: 100, Height: 18); }
-
-      Label { Text: "Priority"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 122, Left: 132, Width: 90, Height: 16); }
-      Label #PriorityValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 142, Left: 132, Width: 100, Height: 18); }
-
-      Label { Text: "Hierarchy"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 176, Left: 0, Width: 90, Height: 16); }
-      Label #HierarchyValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 196, Left: 0, Right: 0, Height: 34); }
-    }
-
-    Group #WorkCard {
-      Anchor: (Top: 576, Left: 28, Width: 494, Height: 156);
-      Background: $Hg.@HgSurface;
-      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
-
-      Label { Text: "Region Work"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
-      Label { Text: "Teleport, load the selection, or store your current location as the region spawn."; Style: $Hg.@HgMetaStyle; Anchor: (Top: 20, Left: 0, Right: 0, Height: 28); }
+      Label { Text: "Дії"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 100, Height: 18); }
 
       TextButton #TeleportButton {
-        Anchor: (Top: 70, Left: 0, Width: 138, Height: 42);
-        Text: "Teleport";
+        Anchor: (Top: 44, Left: 0, Width: 120, Height: 42);
+        Text: "Телепорт";
         Style: $Hg.@HgPrimaryTextButtonStyle;
       }
 
       Group #TeleportButtonDisabled {
-        Anchor: (Top: 70, Left: 0, Width: 138, Height: 42);
+        Anchor: (Top: 44, Left: 0, Width: 120, Height: 42);
         Background: $Hg.@HgSurfaceDisabled;
         Visible: false;
-        Label { Text: "Teleport locked"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+        Label { Text: "Телепорт"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
       }
 
       TextButton #SelectButton {
-        Anchor: (Top: 70, Left: 156, Width: 146, Height: 42);
-        Text: "Load Selection";
+        Anchor: (Top: 44, Left: 132, Width: 120, Height: 42);
+        Text: "Виділення";
         Style: $Hg.@HgSecondaryTextButtonStyle;
       }
 
       Group #SelectButtonDisabled {
-        Anchor: (Top: 70, Left: 156, Width: 146, Height: 42);
+        Anchor: (Top: 44, Left: 132, Width: 120, Height: 42);
         Background: $Hg.@HgSurfaceDisabled;
         Visible: false;
-        Label { Text: "Selection locked"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+        Label { Text: "Виділення"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
       }
 
       TextButton #SetSpawnButton {
-        Anchor: (Top: 70, Left: 320, Width: 138, Height: 42);
-        Text: "Set Spawn";
+        Anchor: (Top: 44, Left: 264, Width: 120, Height: 42);
+        Text: "Спавн";
         Style: $Hg.@HgSecondaryTextButtonStyle;
       }
 
       Group #SetSpawnButtonDisabled {
-        Anchor: (Top: 70, Left: 320, Width: 138, Height: 42);
+        Anchor: (Top: 44, Left: 264, Width: 120, Height: 42);
         Background: $Hg.@HgSurfaceDisabled;
         Visible: false;
-        Label { Text: "Spawn locked"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+        Label { Text: "Спавн"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
       }
-    }
-
-    Group #ManagementCard {
-      Anchor: (Top: 576, Left: 538, Width: 280, Height: 156);
-      Background: $Hg.@HgSurface;
-      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
-
-      Label { Text: "Management"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
-      Label { Text: "Open the dedicated screens for members and flags."; Style: $Hg.@HgMetaStyle; Anchor: (Top: 20, Left: 0, Right: 0, Height: 28); }
 
       TextButton #MembersButton {
-        Anchor: (Top: 70, Left: 0, Width: 114, Height: 42);
-        Text: "Members";
+        Anchor: (Top: 44, Left: 396, Width: 120, Height: 42);
+        Text: "Доступ";
         Style: $Hg.@HgSecondaryTextButtonStyle;
       }
 
       TextButton #FlagsButton {
-        Anchor: (Top: 70, Left: 130, Width: 114, Height: 42);
-        Text: "Flags";
+        Anchor: (Top: 44, Left: 528, Width: 120, Height: 42);
+        Text: "Правила";
         Style: $Hg.@HgSecondaryTextButtonStyle;
       }
-    }
 
-    Group #DangerCard {
-      Anchor: (Top: 576, Left: 834, Right: 28, Height: 156);
-      Background: $Hg.@HgSurface;
-      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
-
-      Label { Text: "Danger Zone"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
-      Label { Text: "Deletion is separated from regular actions to reduce accidental clicks."; Style: $Hg.@HgMetaStyle; Anchor: (Top: 20, Left: 0, Right: 0, Height: 28); }
+      TextButton #MapButton {
+        Anchor: (Top: 44, Left: 660, Width: 120, Height: 42);
+        Text: "Мапа";
+        Style: $Hg.@HgSecondaryTextButtonStyle;
+      }
 
       TextButton #DeleteButton {
-        Anchor: (Top: 70, Left: 0, Right: 0, Height: 42);
-        Text: "Delete Region";
+        Anchor: (Top: 44, Left: 792, Width: 196, Height: 42);
+        Text: "Видалити";
         Style: $Hg.@HgDangerTextButtonStyle;
       }
 
       Group #DeleteButtonDisabled {
-        Anchor: (Top: 70, Left: 0, Right: 0, Height: 42);
+        Anchor: (Top: 44, Left: 792, Width: 196, Height: 42);
         Background: $Hg.@HgSurfaceDisabled;
         Visible: false;
-        Label { Text: "Delete locked"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
+        Label { Text: "Видалити"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
       }
 
       Label #DeleteHint {
         Style: $Hg.@HgMetaStyle;
-        Anchor: (Top: 120, Left: 0, Right: 0, Height: 24);
+        Anchor: (Top: 94, Left: 792, Right: 0, Height: 18);
       }
+    }
+
+    Group #Details {
+      Anchor: (Top: 444, Left: 28, Width: 360, Bottom: 28);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
+
+      Label { Text: "Паспорт"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
+
+      Label { Text: "Назва"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 34, Left: 0, Width: 84, Height: 16); }
+      Label #NameValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 54, Left: 0, Right: 0, Height: 18); }
+
+      Label { Text: "Власник"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 84, Left: 0, Width: 84, Height: 16); }
+      Label #OwnerValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 104, Left: 0, Right: 0, Height: 18); }
+
+      Label { Text: "Світ"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 134, Left: 0, Width: 84, Height: 16); }
+      Label #WorldValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 154, Left: 0, Right: 0, Height: 18); }
+
+      Label { Text: "Спавн"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 184, Left: 0, Width: 84, Height: 16); }
+      Label #SpawnValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 204, Left: 0, Right: 0, Height: 34); }
+    }
+
+    Group #BoundsCard {
+      Anchor: (Top: 444, Left: 406, Right: 28, Bottom: 28);
+      Background: $Hg.@HgSurface;
+      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
+
+      Label { Text: "Межі"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
+
+      Label { Text: "Координати"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 34, Left: 0, Width: 100, Height: 16); }
+      Label #BoundsValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 54, Left: 0, Right: 0, Height: 54); }
+
+      Label { Text: "Учасники"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 126, Left: 0, Width: 90, Height: 16); }
+      Label #MembersValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 146, Left: 0, Width: 140, Height: 18); }
+
+      Label { Text: "Пріоритет"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 126, Left: 170, Width: 90, Height: 16); }
+      Label #PriorityValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 146, Left: 170, Width: 120, Height: 18); }
+
+      Label { Text: "Ієрархія"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 182, Left: 0, Width: 90, Height: 16); }
+      Label #HierarchyValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 202, Left: 0, Right: 0, Height: 34); }
     }
   }
 }

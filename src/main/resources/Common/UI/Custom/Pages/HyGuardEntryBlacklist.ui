@@ -9,7 +9,7 @@ $C.@PageOverlay {
     Button #BackButton {
       Anchor: (Top: 24, Left: 28, Width: 102, Height: 42);
       Style: $Hg.@HgSecondaryButtonStyle;
-      Label { Text: "Back"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+      Label { Text: "Назад"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
     }
 
     Label #PageTitle {
@@ -30,7 +30,7 @@ $C.@PageOverlay {
     }
 
     Group #StatusCard {
-      Anchor: (Top: 108, Left: 28, Right: 28, Height: 60);
+      Anchor: (Top: 108, Left: 28, Right: 28, Height: 54);
       Background: $Hg.@HgSurface;
       Padding: (Top: 12, Bottom: 12, Left: 18, Right: 18);
 
@@ -39,16 +39,15 @@ $C.@PageOverlay {
       Group #StatusWarning { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgDangerHover; Visible: false; }
       Group #StatusError { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgDanger; Visible: false; }
 
-      Label { Text: "Status"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 18, Width: 80, Height: 16); }
-      Label #StatusText { Style: $Hg.@HgBodyStyle; Anchor: (Top: 22, Left: 18, Right: 0, Height: 18); }
+      Label #StatusText { Style: $Hg.@HgBodyStyle; Anchor: (Top: 12, Left: 18, Right: 0, Height: 18); }
     }
 
     Group #PlayersPanel {
-      Anchor: (Top: 186, Left: 28, Width: 420, Bottom: 28);
+      Anchor: (Top: 180, Left: 28, Width: 392, Bottom: 28);
       Background: $Hg.@HgSurface;
       Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
 
-      Label { Text: "Known players"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 160, Height: 18); }
+      Label { Text: "Гравці"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
       Label #BlacklistSummary { Style: $Hg.@HgMetaStyle; Anchor: (Top: 24, Left: 0, Right: 0, Height: 18); }
 
       Group #PlayerScrollArea {
@@ -63,12 +62,12 @@ $C.@PageOverlay {
     }
 
     Group #InputCard {
-      Anchor: (Top: 186, Left: 466, Right: 28, Height: 212);
+      Anchor: (Top: 180, Left: 438, Right: 28, Height: 198);
       Background: $Hg.@HgSurface;
       Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
 
-      Label { Text: "Add or remove player"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 220, Height: 18); }
-      Label { Text: "Username"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 34, Left: 0, Width: 90, Height: 16); }
+      Label { Text: "Blacklist"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 140, Height: 18); }
+      Label { Text: "Ім'я"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 34, Left: 0, Width: 90, Height: 16); }
 
       Group {
         Anchor: (Top: 54, Left: 0, Right: 0, Height: 40);
@@ -80,7 +79,7 @@ $C.@PageOverlay {
         TextField #SearchInput {
           Anchor: (Full: 0);
           Style: $Hg.@HgInputStyle;
-          PlaceholderText: "Type a remembered or online username";
+          PlaceholderText: "Ім'я гравця";
           PlaceholderStyle: $C.@DefaultInputFieldPlaceholderStyle;
         }
       }
@@ -88,28 +87,28 @@ $C.@PageOverlay {
       Button #AddButton {
         Anchor: (Top: 112, Left: 0, Width: 180, Height: 42);
         Style: $Hg.@HgPrimaryButtonStyle;
-        Label { Text: "Add To Blacklist"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Label { Text: "Додати"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
       }
 
       Button #RemoveButton {
         Anchor: (Top: 112, Left: 194, Width: 180, Height: 42);
         Style: $Hg.@HgDangerButtonStyle;
-        Label { Text: "Remove"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Label { Text: "Прибрати"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
       }
 
       Label {
-        Text: "Click a known player to prefill the field, or type a username manually if they are remembered or currently online.";
+        Text: "Виберіть гравця або введіть ім'я вручну.";
         Style: $Hg.@HgMetaStyle;
-        Anchor: (Top: 168, Left: 0, Right: 0, Height: 28);
+        Anchor: (Top: 168, Left: 0, Right: 0, Height: 18);
       }
     }
 
     Group #SelectedCard {
-      Anchor: (Top: 416, Left: 466, Right: 28, Bottom: 28);
+      Anchor: (Top: 396, Left: 438, Right: 28, Bottom: 28);
       Background: $Hg.@HgSurface;
       Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
 
-      Label { Text: "Selected player"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 180, Height: 18); }
+      Label { Text: "Вибраний"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 140, Height: 18); }
       Label #SelectedName { Style: $Hg.@HgBodyStyle; Anchor: (Top: 34, Left: 0, Right: 0, Height: 22); }
       Label #SelectedState { Style: $Hg.@HgMetaStyle; Anchor: (Top: 62, Left: 0, Right: 0, Height: 18); }
       Label #SelectedHint { Style: $Hg.@HgMetaStyle; Anchor: (Top: 92, Left: 0, Right: 0, Height: 54); }

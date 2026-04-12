@@ -1,0 +1,90 @@
+$C = "../Common.ui";
+$Hg = "HyGuardShared.ui";
+
+Group {
+  Anchor: (Left: 0, Right: 0, Height: 34);
+
+  Button #Swatch01Button {
+    Anchor: (Top: 0, Left: 0, Width: 46, Height: 30);
+    Style: $Hg.@HgCardButtonStyle;
+    Group #Swatch01Color { Anchor: (Top: 5, Left: 5, Right: 5, Bottom: 7); Background: #ffffff; }
+    Group #Swatch01Selected { Anchor: (Left: 6, Right: 6, Bottom: 3, Height: 3); Background: $Hg.@HgOutlineStrong; Visible: false; }
+  }
+
+  Button #Swatch02Button {
+    Anchor: (Top: 0, Left: 50, Width: 46, Height: 30);
+    Style: $Hg.@HgCardButtonStyle;
+    Group #Swatch02Color { Anchor: (Top: 5, Left: 5, Right: 5, Bottom: 7); Background: #ffffff; }
+    Group #Swatch02Selected { Anchor: (Left: 6, Right: 6, Bottom: 3, Height: 3); Background: $Hg.@HgOutlineStrong; Visible: false; }
+  }
+
+  Button #Swatch03Button {
+    Anchor: (Top: 0, Left: 100, Width: 46, Height: 30);
+    Style: $Hg.@HgCardButtonStyle;
+    Group #Swatch03Color { Anchor: (Top: 5, Left: 5, Right: 5, Bottom: 7); Background: #ffffff; }
+    Group #Swatch03Selected { Anchor: (Left: 6, Right: 6, Bottom: 3, Height: 3); Background: $Hg.@HgOutlineStrong; Visible: false; }
+  }
+
+  Button #Swatch04Button {
+    Anchor: (Top: 0, Left: 150, Width: 46, Height: 30);
+    Style: $Hg.@HgCardButtonStyle;
+    Group #Swatch04Color { Anchor: (Top: 5, Left: 5, Right: 5, Bottom: 7); Background: #ffffff; }
+    Group #Swatch04Selected { Anchor: (Left: 6, Right: 6, Bottom: 3, Height: 3); Background: $Hg.@HgOutlineStrong; Visible: false; }
+  }
+
+  Button #Swatch05Button {
+    Anchor: (Top: 0, Left: 200, Width: 46, Height: 30);
+    Style: $Hg.@HgCardButtonStyle;
+    Group #Swatch05Color { Anchor: (Top: 5, Left: 5, Right: 5, Bottom: 7); Background: #ffffff; }
+    Group #Swatch05Selected { Anchor: (Left: 6, Right: 6, Bottom: 3, Height: 3); Background: $Hg.@HgOutlineStrong; Visible: false; }
+  }
+
+  Button #Swatch06Button {
+    Anchor: (Top: 0, Left: 250, Width: 46, Height: 30);
+    Style: $Hg.@HgCardButtonStyle;
+    Group #Swatch06Color { Anchor: (Top: 5, Left: 5, Right: 5, Bottom: 7); Background: #ffffff; }
+    Group #Swatch06Selected { Anchor: (Left: 6, Right: 6, Bottom: 3, Height: 3); Background: $Hg.@HgOutlineStrong; Visible: false; }
+  }
+
+  Button #Swatch07Button {
+    Anchor: (Top: 0, Left: 300, Width: 46, Height: 30);
+    Style: $Hg.@HgCardButtonStyle;
+    Group #Swatch07Color { Anchor: (Top: 5, Left: 5, Right: 5, Bottom: 7); Background: #ffffff; }
+    Group #Swatch07Selected { Anchor: (Left: 6, Right: 6, Bottom: 3, Height: 3); Background: $Hg.@HgOutlineStrong; Visible: false; }
+  }
+
+  Button #Swatch08Button {
+    Anchor: (Top: 0, Left: 350, Width: 46, Height: 30);
+    Style: $Hg.@HgCardButtonStyle;
+    Group #Swatch08Color { Anchor: (Top: 5, Left: 5, Right: 5, Bottom: 7); Background: #ffffff; }
+    Group #Swatch08Selected { Anchor: (Left: 6, Right: 6, Bottom: 3, Height: 3); Background: $Hg.@HgOutlineStrong; Visible: false; }
+  }
+
+  Button #Swatch09Button {
+    Anchor: (Top: 0, Left: 400, Width: 46, Height: 30);
+    Style: $Hg.@HgCardButtonStyle;
+    Group #Swatch09Color { Anchor: (Top: 5, Left: 5, Right: 5, Bottom: 7); Background: #ffffff; }
+    Group #Swatch09Selected { Anchor: (Left: 6, Right: 6, Bottom: 3, Height: 3); Background: $Hg.@HgOutlineStrong; Visible: false; }
+  }
+
+  Button #Swatch10Button {
+    Anchor: (Top: 0, Left: 450, Width: 46, Height: 30);
+    Style: $Hg.@HgCardButtonStyle;
+    Group #Swatch10Color { Anchor: (Top: 5, Left: 5, Right: 5, Bottom: 7); Background: #ffffff; }
+    Group #Swatch10Selected { Anchor: (Left: 6, Right: 6, Bottom: 3, Height: 3); Background: $Hg.@HgOutlineStrong; Visible: false; }
+  }
+
+  Button #Swatch11Button {
+    Anchor: (Top: 0, Left: 500, Width: 46, Height: 30);
+    Style: $Hg.@HgCardButtonStyle;
+    Group #Swatch11Color { Anchor: (Top: 5, Left: 5, Right: 5, Bottom: 7); Background: #ffffff; }
+    Group #Swatch11Selected { Anchor: (Left: 6, Right: 6, Bottom: 3, Height: 3); Background: $Hg.@HgOutlineStrong; Visible: false; }
+  }
+
+  Button #Swatch12Button {
+    Anchor: (Top: 0, Left: 550, Width: 46, Height: 30);
+    Style: $Hg.@HgCardButtonStyle;
+    Group #Swatch12Color { Anchor: (Top: 5, Left: 5, Right: 5, Bottom: 7); Background: #ffffff; }
+    Group #Swatch12Selected { Anchor: (Left: 6, Right: 6, Bottom: 3, Height: 3); Background: $Hg.@HgOutlineStrong; Visible: false; }
+  }
+}

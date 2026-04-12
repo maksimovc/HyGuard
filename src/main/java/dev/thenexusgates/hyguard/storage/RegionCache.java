@@ -1,5 +1,6 @@
 package dev.thenexusgates.hyguard.storage;
 
+import com.hypixel.hytale.math.util.ChunkUtil;
 import dev.thenexusgates.hyguard.core.region.Region;
 import dev.thenexusgates.hyguard.util.BlockPos;
 import dev.thenexusgates.hyguard.util.GeometryUtils;
@@ -72,7 +73,10 @@ public final class RegionCache {
         ArrayList<Region> regions = new ArrayList<>();
         ConcurrentHashMap<Long, List<String>> worldIndex = chunkIndex.get(normalize(worldId));
         if (worldIndex != null) {
-            long chunkKey = GeometryUtils.chunkKey(blockPos.getX() >> 4, blockPos.getZ() >> 4);
+            long chunkKey = GeometryUtils.chunkKey(
+                    ChunkUtil.chunkCoordinate(blockPos.getX()),
+                    ChunkUtil.chunkCoordinate(blockPos.getZ())
+            );
             List<String> regionIds = worldIndex.get(chunkKey);
             if (regionIds != null) {
                 for (String regionId : regionIds) {
@@ -104,6 +108,32 @@ public final class RegionCache {
         return List.copyOf(byId.values());
     }
 
+    public List<Region> getRegionsOverlappingChunk(String worldId, int chunkX, int chunkZ) {
+        ConcurrentHashMap<Long, List<String>> worldIndex = chunkIndex.get(normalize(worldId));
+        if (worldIndex == null) {
+            return List.of();
+        }
+
+        List<String> regionIds = worldIndex.get(GeometryUtils.chunkKey(chunkX, chunkZ));
+        if (regionIds == null || regionIds.isEmpty()) {
+            return List.of();
+        }
+
+        ArrayList<Region> regions = new ArrayList<>(regionIds.size());
+        for (String regionId : regionIds) {
+            Region region = byId.get(regionId);
+            if (region != null) {
+                regions.add(region);
+            }
+        }
+
+        regions.sort(Comparator
+                .comparingLong(Region::getVolume)
+                .thenComparing(Comparator.comparingInt(Region::getPriority).reversed())
+                .thenComparing(Region::getName, String.CASE_INSENSITIVE_ORDER));
+        return List.copyOf(regions);
+    }
+
     private void index(Region region) {
         if (region.isGlobal()) {
             globalRegions.compute(normalize(region.getWorldId()), (ignored, current) -> {
@@ -121,10 +151,10 @@ public final class RegionCache {
                 ignored -> new ConcurrentHashMap<>()
         );
 
-        int minChunkX = region.getMin().getX() >> 4;
-        int maxChunkX = region.getMax().getX() >> 4;
-        int minChunkZ = region.getMin().getZ() >> 4;
-        int maxChunkZ = region.getMax().getZ() >> 4;
+        int minChunkX = ChunkUtil.chunkCoordinate(region.getMin().getX());
+        int maxChunkX = ChunkUtil.chunkCoordinate(region.getMax().getX());
+        int minChunkZ = ChunkUtil.chunkCoordinate(region.getMin().getZ());
+        int maxChunkZ = ChunkUtil.chunkCoordinate(region.getMax().getZ());
         for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
             for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
                 long key = GeometryUtils.chunkKey(chunkX, chunkZ);

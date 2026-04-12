@@ -2,7 +2,7 @@ $C = "../Common.ui";
 $Hg = "HyGuardShared.ui";
 
 Group {
-  Anchor: (Left: 4, Right: 4, Height: 124, Bottom: 10);
+  Anchor: (Left: 4, Right: 4, Height: 110, Bottom: 8);
   Background: $Hg.@HgSurfaceAlt;
   Padding: (Top: 12, Bottom: 12, Left: 14, Right: 14);
 
@@ -12,12 +12,12 @@ Group {
   }
 
   Label #FlagDescription {
-    Anchor: (Top: 24, Left: 0, Right: 320, Height: 18);
+    Anchor: (Top: 20, Left: 0, Right: 320, Height: 18);
     Style: (FontSize: 12, TextColor: #aac1cf, VerticalAlignment: Center);
   }
 
   Group #InputShell {
-    Anchor: (Top: 54, Left: 0, Right: 212, Height: 40);
+    Anchor: (Top: 44, Left: 0, Right: 204, Height: 40);
     Background: $Hg.@HgInputBackground;
     OutlineColor: $Hg.@HgOutline;
     OutlineSize: 1;
@@ -31,7 +31,7 @@ Group {
   }
 
   Group #PresetRow {
-    Anchor: (Top: 54, Left: 0, Right: 212, Height: 40);
+    Anchor: (Top: 44, Left: 0, Right: 204, Height: 40);
     Visible: false;
 
     Button #AdventureButton {
@@ -50,38 +50,38 @@ Group {
   }
 
   Button #SaveBtn {
-    Anchor: (Top: 54, Right: 102, Width: 92, Height: 40);
+    Anchor: (Top: 44, Right: 102, Width: 92, Height: 40);
     Style: $Hg.@HgPrimaryButtonStyle;
     Label { Text: "Save"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
   }
 
   Button #SaveBtnDisabled {
-    Anchor: (Top: 54, Right: 102, Width: 92, Height: 40);
+    Anchor: (Top: 44, Right: 102, Width: 92, Height: 40);
     Style: $Hg.@HgSecondaryButtonStyle;
     Visible: false;
     Label { Text: "Save"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
   }
 
   Button #ClearBtn {
-    Anchor: (Top: 54, Right: 0, Width: 92, Height: 40);
+    Anchor: (Top: 44, Right: 0, Width: 92, Height: 40);
     Style: $Hg.@HgNeutralButtonStyle;
     Label { Text: "Clear"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
   }
 
   Button #ClearBtnDisabled {
-    Anchor: (Top: 54, Right: 0, Width: 92, Height: 40);
+    Anchor: (Top: 44, Right: 0, Width: 92, Height: 40);
     Style: $Hg.@HgSecondaryButtonStyle;
     Visible: false;
     Label { Text: "Clear"; Style: $Hg.@HgButtonLabelDisabledStyle; Anchor: (Full: 0); }
   }
 
   Label #CurrentValue {
-    Anchor: (Top: 100, Left: 0, Right: 0, Height: 14);
+    Anchor: (Top: 88, Left: 0, Right: 0, Height: 14);
     Style: (FontSize: 11, TextColor: #cde4f6, VerticalAlignment: Center);
   }
 
   Label #ReadOnlyHint {
-    Anchor: (Top: 100, Left: 0, Right: 0, Height: 14);
+    Anchor: (Top: 88, Left: 0, Right: 0, Height: 14);
     Style: (FontSize: 11, TextColor: #d7a19f, VerticalAlignment: Center);
     Text: "Read only: you can inspect this flag, but you cannot change it.";
     Visible: false;

@@ -9,7 +9,7 @@ $C.@PageOverlay {
     Button #BackButton {
       Anchor: (Top: 24, Left: 28, Width: 102, Height: 42);
       Style: $Hg.@HgSecondaryButtonStyle;
-      Label { Text: "Back"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+      Label { Text: "Назад"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
     }
 
     Label #PageTitle {
@@ -30,7 +30,7 @@ $C.@PageOverlay {
     }
 
     Group #StatusCard {
-      Anchor: (Top: 108, Left: 28, Right: 28, Height: 60);
+      Anchor: (Top: 108, Left: 28, Right: 28, Height: 54);
       Background: $Hg.@HgSurface;
       Padding: (Top: 12, Bottom: 12, Left: 18, Right: 18);
 
@@ -39,20 +39,58 @@ $C.@PageOverlay {
       Group #StatusWarning { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgDangerHover; Visible: false; }
       Group #StatusError { Anchor: (Top: 8, Left: 0, Width: 6, Bottom: 8); Background: $Hg.@HgDanger; Visible: false; }
 
-      Label { Text: "Status"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 18, Width: 80, Height: 16); }
-      Label #StatusText { Style: $Hg.@HgBodyStyle; Anchor: (Top: 22, Left: 18, Right: 0, Height: 18); }
+      Label #StatusText { Style: $Hg.@HgBodyStyle; Anchor: (Top: 12, Left: 18, Right: 0, Height: 18); }
     }
 
-    Group #SidebarCard {
-      Anchor: (Top: 186, Left: 28, Width: 268, Bottom: 28);
+    Group #ToolbarCard {
+      Anchor: (Top: 180, Left: 28, Right: 28, Height: 84);
       Background: $Hg.@HgSurface;
       Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
 
-      Label { Text: "Categories"; Style: $Hg.@HgSectionTitleStyle; Anchor: (Top: 0, Left: 0, Width: 120, Height: 18); }
-      Label { Text: "Switch sections instead of scrolling one flat flag wall."; Style: $Hg.@HgMetaStyle; Anchor: (Top: 22, Left: 0, Right: 0, Height: 34); }
+      Button #CategoryBlocksButton {
+        Anchor: (Top: 0, Left: 0, Width: 100, Height: 40);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Блоки"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #CategoryBlocksSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #CategoryPlayersButton {
+        Anchor: (Top: 0, Left: 112, Width: 100, Height: 40);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Гравці"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #CategoryPlayersSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #CategoryMobsButton {
+        Anchor: (Top: 0, Left: 224, Width: 100, Height: 40);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Моби"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #CategoryMobsSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #CategoryEnvironmentButton {
+        Anchor: (Top: 0, Left: 336, Width: 120, Height: 40);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Середовище"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #CategoryEnvironmentSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #CategoryEntryExitButton {
+        Anchor: (Top: 0, Left: 468, Width: 120, Height: 40);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Вхід / вихід"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #CategoryEntryExitSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
+
+      Button #CategorySpecialButton {
+        Anchor: (Top: 0, Left: 600, Width: 100, Height: 40);
+        Style: $Hg.@HgTabButtonStyle;
+        Label { Text: "Особливе"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
+        Group #CategorySpecialSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
+      }
 
       Group {
-        Anchor: (Top: 68, Left: 0, Right: 0, Height: 40);
+        Anchor: (Top: 0, Right: 0, Width: 240, Height: 40);
         Background: $Hg.@HgInputBackground;
         OutlineColor: $Hg.@HgOutline;
         OutlineSize: 1;
@@ -61,56 +99,14 @@ $C.@PageOverlay {
         TextField #SearchInput {
           Anchor: (Full: 0);
           Style: $Hg.@HgInputStyle;
-          PlaceholderText: "Search flags";
+          PlaceholderText: "Пошук правил";
           PlaceholderStyle: $C.@DefaultInputFieldPlaceholderStyle;
         }
-      }
-
-      Button #CategoryBlocksButton {
-        Anchor: (Top: 126, Left: 0, Right: 0, Height: 40);
-        Style: $Hg.@HgTabButtonStyle;
-        Label { Text: "Blocks"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
-        Group #CategoryBlocksSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
-      }
-
-      Button #CategoryPlayersButton {
-        Anchor: (Top: 174, Left: 0, Right: 0, Height: 40);
-        Style: $Hg.@HgTabButtonStyle;
-        Label { Text: "Players"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
-        Group #CategoryPlayersSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
-      }
-
-      Button #CategoryMobsButton {
-        Anchor: (Top: 222, Left: 0, Right: 0, Height: 40);
-        Style: $Hg.@HgTabButtonStyle;
-        Label { Text: "Mobs"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
-        Group #CategoryMobsSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
-      }
-
-      Button #CategoryEnvironmentButton {
-        Anchor: (Top: 270, Left: 0, Right: 0, Height: 40);
-        Style: $Hg.@HgTabButtonStyle;
-        Label { Text: "Environment"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
-        Group #CategoryEnvironmentSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
-      }
-
-      Button #CategoryEntryExitButton {
-        Anchor: (Top: 318, Left: 0, Right: 0, Height: 40);
-        Style: $Hg.@HgTabButtonStyle;
-        Label { Text: "Entry / Exit"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
-        Group #CategoryEntryExitSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
-      }
-
-      Button #CategorySpecialButton {
-        Anchor: (Top: 366, Left: 0, Right: 0, Height: 40);
-        Style: $Hg.@HgTabButtonStyle;
-        Label { Text: "Special"; Style: $Hg.@HgButtonLabelStyle; Anchor: (Full: 0); }
-        Group #CategorySpecialSelected { Anchor: (Left: 10, Right: 10, Bottom: 4, Height: 4); Background: $Hg.@HgPrimary; Visible: false; }
       }
     }
 
     Group #ContentCard {
-      Anchor: (Top: 186, Left: 314, Right: 28, Bottom: 28);
+      Anchor: (Top: 280, Left: 28, Right: 28, Bottom: 28);
       Background: $Hg.@HgSurface;
       Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
 

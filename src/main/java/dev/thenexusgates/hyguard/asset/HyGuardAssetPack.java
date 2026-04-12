@@ -6,6 +6,13 @@ import com.hypixel.hytale.common.semver.Semver;
 import com.hypixel.hytale.server.core.asset.AssetModule;
 import dev.thenexusgates.hyguard.HyGuardPlugin;
 
+import javax.imageio.ImageIO;
+import java.awt.BasicStroke;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.Path2D;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
@@ -31,6 +38,7 @@ public final class HyGuardAssetPack {
     private static final String TARGET_SERVER_VERSION = "2026.03.26-89796e57b";
     private static final String PACK_DIRECTORY_NAME = "thenexusgates_HyGuard";
     private static final String DATA_DIRECTORY_NAME = "thenexusgates_HyGuardData";
+    private static final String CLAIM_MARKER_ASSET_PATH = "UI/WorldMap/MapMarkers/HyGuardClaim.png";
     private static final Set<String> BUNDLED_PREFIXES = Set.of("Common/", "Server/");
     private static final List<String> MIGRATED_DATA_ENTRIES = List.of("config.json", "players", "regions", "backups");
 
@@ -75,6 +83,10 @@ public final class HyGuardAssetPack {
         return packRoot;
     }
 
+    public static String getClaimMarkerAssetPath() {
+        return CLAIM_MARKER_ASSET_PATH;
+    }
+
     public void registerIfAvailable() {
         if (registered) {
             return;
@@ -99,8 +111,51 @@ public final class HyGuardAssetPack {
         Files.createDirectories(packRoot);
         migrateLegacyData();
         writeBundledResources(pluginLocation);
+        ensureGeneratedMapMarker();
         ensurePackEnabled(modsDirectory.getParent().resolve("config.json"));
         registerIfAvailable();
+    }
+
+    private void ensureGeneratedMapMarker() throws IOException {
+        Path output = safeResolve(packRoot, "Common/" + CLAIM_MARKER_ASSET_PATH);
+        Files.createDirectories(output.getParent());
+
+        BufferedImage image = new BufferedImage(24, 24, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            graphics.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+
+            Path2D.Float badge = new Path2D.Float();
+            badge.moveTo(4.0, 5.0);
+            badge.lineTo(20.0, 5.0);
+            badge.curveTo(21.2, 5.0, 22.0, 5.8, 22.0, 7.0);
+            badge.lineTo(22.0, 17.0);
+            badge.curveTo(22.0, 18.2, 21.2, 19.0, 20.0, 19.0);
+            badge.lineTo(14.2, 19.0);
+            badge.lineTo(12.0, 22.0);
+            badge.lineTo(9.8, 19.0);
+            badge.lineTo(4.0, 19.0);
+            badge.curveTo(2.8, 19.0, 2.0, 18.2, 2.0, 17.0);
+            badge.lineTo(2.0, 7.0);
+            badge.curveTo(2.0, 5.8, 2.8, 5.0, 4.0, 5.0);
+            badge.closePath();
+
+            graphics.setColor(new java.awt.Color(255, 255, 255, 248));
+            graphics.fill(badge);
+            graphics.setColor(new java.awt.Color(24, 28, 33, 240));
+            graphics.setStroke(new BasicStroke(1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            graphics.draw(badge);
+
+            graphics.setColor(new java.awt.Color(24, 28, 33, 232));
+            graphics.fill(new Ellipse2D.Float(7.4f, 7.2f, 9.2f, 9.2f));
+            graphics.setColor(new java.awt.Color(255, 255, 255, 250));
+            graphics.fill(new Ellipse2D.Float(10.25f, 10.05f, 3.5f, 3.5f));
+        } finally {
+            graphics.dispose();
+        }
+
+        ImageIO.write(image, "png", output.toFile());
     }
 
     private void migrateLegacyData() throws IOException {

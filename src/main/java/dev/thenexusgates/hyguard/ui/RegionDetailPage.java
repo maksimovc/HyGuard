@@ -53,8 +53,8 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
         this.worldName = worldName;
         this.regionName = regionName;
         this.statusMessage = t(
-                "Use navigation, management, and danger actions from their separate cards below.",
-                "Використовуйте навігаційні, керувальні та небезпечні дії з окремих карток нижче."
+            "Manage this region.",
+            "Керуйте цим регіоном."
         );
     }
 
@@ -140,11 +140,15 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
                 }
             }
             case "Members" -> {
-                plugin.openMemberManager(store, entityRef, playerRef, worldName, regionName);
+                plugin.openRegionWorkspace(store, entityRef, playerRef, worldName, regionName, RegionWorkspacePage.WorkspaceTab.ACCESS, RegionWorkspacePage.AccessMode.MEMBERS);
                 return;
             }
             case "Flags" -> {
-                plugin.openFlagEditor(store, entityRef, playerRef, worldName, regionName);
+                plugin.openRegionWorkspace(store, entityRef, playerRef, worldName, regionName, RegionWorkspacePage.WorkspaceTab.RULES);
+                return;
+            }
+            case "Map" -> {
+                plugin.openRegionWorkspace(store, entityRef, playerRef, worldName, regionName, RegionWorkspacePage.WorkspaceTab.MAP);
                 return;
             }
             case "Delete" -> {
@@ -191,6 +195,7 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
         bind(evt, "#SetSpawnButton", "SetSpawn");
         bind(evt, "#MembersButton", "Members");
         bind(evt, "#FlagsButton", "Flags");
+        bind(evt, "#MapButton", "Map");
         bind(evt, "#DeleteButton", "Delete");
 
         Region region = plugin.findRegionByName(worldName, regionName);
@@ -210,7 +215,7 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
             cmd.set("#PriorityValue.Text", "0");
             cmd.set("#HierarchyValue.Text", t("missing", "відсутня"));
             cmd.set("#SpawnValue.Text", t("n/a", "н/д"));
-            cmd.set("#DeleteHint.Text", t("Region is missing.", "Регіон відсутній."));
+            cmd.set("#DeleteHint.Text", t("Missing", "Відсутній"));
             setActionAvailability(cmd, false, false, false, false);
             applyStatus(cmd);
             return;
@@ -239,20 +244,20 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
         cmd.set("#PriorityValue.Text", String.valueOf(region.getPriority()));
         cmd.set("#HierarchyValue.Text", formatHierarchy(region));
         cmd.set("#SpawnValue.Text", region.getSpawnPoint() == null ? t("not set", "не задано") : region.getSpawnPoint().toString());
-        cmd.set("#DeleteButton.Text", deleteArmed ? t("Confirm Delete", "Підтвердити видалення") : t("Delete Region", "Видалити регіон"));
+        cmd.set("#DeleteButton.Text", deleteArmed ? t("Confirm", "Підтвердити") : t("Delete", "Видалити"));
         cmd.set("#DeleteHint.Text", !canManage
-                ? t("You may inspect this region, but deletion requires region-management permission.", "Ви можете оглядати цей регіон, але для видалення потрібен дозвіл на керування регіоном.")
+                ? t("Locked", "Заблоковано")
                 : deleteArmed
-                    ? t("Press Delete Region again to permanently remove this region.", "Натисніть Видалити регіон ще раз, щоб остаточно видалити цей регіон.")
-                    : t("Delete is isolated below because it permanently removes the region.", "Кнопка видалення винесена окремо, бо вона безповоротно видаляє регіон."));
+                    ? t("Press again to delete.", "Натисніть ще раз для видалення.")
+                    : t("Permanent action.", "Незворотна дія."));
         applyStatus(cmd);
     }
 
     private String formatHierarchy(Region region) {
         if (region.getParentRegionId() == null || region.getParentRegionId().isBlank()) {
-            return t("Root region", "Кореневий регіон");
+            return t("Root", "Корінь");
         }
-        return f("Child of %s", "Дочірній для %s", plugin.getRegionNameById(region.getParentRegionId(), worldName));
+        return f("Parent: %s", "Батько: %s", plugin.getRegionNameById(region.getParentRegionId(), worldName));
     }
 
     private String formatBounds(Region region) {
@@ -268,10 +273,11 @@ public final class RegionDetailPage extends InteractiveCustomUIPage<RegionDetail
         int height = max.getY() - min.getY() + 1;
         int depth = max.getZ() - min.getZ() + 1;
         return f(
-                "Min (%d, %d, %d) | Max (%d, %d, %d) | Size %dx%dx%d",
-                "Мін (%d, %d, %d) | Макс (%d, %d, %d) | Розмір %dx%dx%d",
-                min.getX(), min.getY(), min.getZ(),
-                max.getX(), max.getY(), max.getZ(),
+            "X %d..%d | Y %d..%d | Z %d..%d | S %dx%dx%d",
+            "X %d..%d | Y %d..%d | Z %d..%d | Р %dx%dx%d",
+            min.getX(), max.getX(),
+            min.getY(), max.getY(),
+            min.getZ(), max.getZ(),
                 width, height, depth);
     }
 

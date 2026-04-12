@@ -38,6 +38,7 @@ import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.Universe;
 import com.hypixel.hytale.server.core.universe.world.World;
+import com.hypixel.hytale.server.core.universe.world.events.AddWorldEvent;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import dev.thenexusgates.hyguard.asset.HyGuardAssetPack;
 import dev.thenexusgates.hyguard.command.GuardCommand;
@@ -72,6 +73,7 @@ import dev.thenexusgates.hyguard.event.HyGuardPlaceBlockSystem;
 import dev.thenexusgates.hyguard.event.HyGuardUseBlockSystem;
 import dev.thenexusgates.hyguard.interaction.HyGuardWandInteraction;
 import dev.thenexusgates.hyguard.i18n.HyGuardText;
+import dev.thenexusgates.hyguard.map.HyGuardMapOverlayManager;
 import dev.thenexusgates.hyguard.permission.HyGuardPermissions;
 import dev.thenexusgates.hyguard.sound.HyGuardSounds;
 import dev.thenexusgates.hyguard.storage.BackupManager;
@@ -84,6 +86,8 @@ import dev.thenexusgates.hyguard.ui.FlagEditorPage;
 import dev.thenexusgates.hyguard.ui.MemberManagerPage;
 import dev.thenexusgates.hyguard.ui.RegionBrowserPage;
 import dev.thenexusgates.hyguard.ui.RegionDetailPage;
+import dev.thenexusgates.hyguard.ui.RegionMapSettingsPage;
+import dev.thenexusgates.hyguard.ui.RegionWorkspacePage;
 import dev.thenexusgates.hyguard.visual.EnterExitMessageRenderer;
 import dev.thenexusgates.hyguard.visual.SelectionVisualizer;
 import dev.thenexusgates.hyguard.visual.VisualScheduler;
@@ -198,6 +202,7 @@ public final class HyGuardPlugin extends JavaPlugin {
     private VisualScheduler visualScheduler;
     private EnterExitMessageRenderer enterExitMessageRenderer;
     private SelectionVisualizer selectionVisualizer;
+    private HyGuardMapOverlayManager mapOverlayManager;
     private PlayerMoveSystem playerMoveSystem;
     private HyGuardBoundaryFluidSystem boundaryFluidSystem;
     private DisconnectCleanupSystem disconnectCleanupSystem;
@@ -233,9 +238,19 @@ public final class HyGuardPlugin extends JavaPlugin {
         visualScheduler = new VisualScheduler(HytaleServer.SCHEDULED_EXECUTOR);
         enterExitMessageRenderer = new EnterExitMessageRenderer(this);
         selectionVisualizer = new SelectionVisualizer(visualScheduler);
+        mapOverlayManager = new HyGuardMapOverlayManager(this);
+        mapOverlayManager.registerCodec();
         playerMoveSystem = new PlayerMoveSystem(this, enterExitMessageRenderer);
         boundaryFluidSystem = new HyGuardBoundaryFluidSystem(this);
         disconnectCleanupSystem = new DisconnectCleanupSystem(this);
+
+        Universe universe = Universe.get();
+        if (universe != null) {
+            for (World world : universe.getWorlds().values()) {
+                rememberWorld(world);
+                mapOverlayManager.install(world);
+            }
+        }
 
         getCodecRegistry(Interaction.CODEC).register(
             HyGuardWandInteraction.ID,
@@ -243,6 +258,13 @@ public final class HyGuardPlugin extends JavaPlugin {
             HyGuardWandInteraction.CODEC
         );
         getCommandRegistry().registerCommand(new GuardCommand(this));
+        getEventRegistry().registerGlobal(AddWorldEvent.class, event -> {
+            World world = event.getWorld();
+            rememberWorld(world);
+            if (mapOverlayManager != null) {
+                mapOverlayManager.install(world);
+            }
+        });
         getEventRegistry().registerGlobal(com.hypixel.hytale.server.core.event.events.player.PlayerDisconnectEvent.class, disconnectCleanupSystem::handle);
         getEventRegistry().registerGlobal(RemovedPlayerFromWorldEvent.class, disconnectCleanupSystem::handle);
         getEventRegistry().registerGlobal(DrainPlayerFromWorldEvent.class, disconnectCleanupSystem::handle);
@@ -299,6 +321,10 @@ public final class HyGuardPlugin extends JavaPlugin {
         if (selectionVisualizer != null) {
             selectionVisualizer.shutdown();
         }
+        if (mapOverlayManager != null) {
+            mapOverlayManager.shutdown();
+            mapOverlayManager = null;
+        }
         if (visualScheduler != null) {
             visualScheduler.cancelAll();
         }
@@ -342,6 +368,10 @@ public final class HyGuardPlugin extends JavaPlugin {
 
     public RegionCache getRegionCache() {
         return regionCache;
+    }
+
+    public HyGuardMapOverlayManager getMapOverlayManager() {
+        return mapOverlayManager;
     }
 
     public boolean hasAdminPermission(PlayerRef playerRef) {
@@ -501,8 +531,7 @@ public final class HyGuardPlugin extends JavaPlugin {
         region.putFlag(RegionFlag.BLOCK_PLACE, new RegionFlagValue(RegionFlagValue.Mode.valueOf(config.defaults.blockPlace)));
         region.putFlag(RegionFlag.BLOCK_INTERACT, new RegionFlagValue(RegionFlagValue.Mode.valueOf(config.defaults.blockInteract)));
 
-        regionCache.put(region);
-        regionRepository.saveRegionAsync(region);
+        saveRegion(region);
         return RegionCreationResult.success(region);
     }
 
@@ -513,8 +542,7 @@ public final class HyGuardPlugin extends JavaPlugin {
         region.putFlag(RegionFlag.BLOCK_BREAK, new RegionFlagValue(RegionFlagValue.Mode.valueOf(config.defaults.blockBreak)));
         region.putFlag(RegionFlag.BLOCK_PLACE, new RegionFlagValue(RegionFlagValue.Mode.valueOf(config.defaults.blockPlace)));
         region.putFlag(RegionFlag.BLOCK_INTERACT, new RegionFlagValue(RegionFlagValue.Mode.valueOf(config.defaults.blockInteract)));
-        regionCache.put(region);
-        regionRepository.saveRegionAsync(region);
+        saveRegion(region);
         return region;
     }
 
@@ -527,6 +555,9 @@ public final class HyGuardPlugin extends JavaPlugin {
             return false;
         }
         regionRepository.deleteRegionAsync(removed);
+        if (mapOverlayManager != null) {
+            mapOverlayManager.invalidateRegion(removed);
+        }
         return true;
     }
 
@@ -537,6 +568,9 @@ public final class HyGuardPlugin extends JavaPlugin {
         region.touch();
         regionCache.put(region);
         regionRepository.saveRegionAsync(region);
+        if (mapOverlayManager != null) {
+            mapOverlayManager.invalidateRegion(region);
+        }
     }
 
     public void flushRegionSaves() {
@@ -552,6 +586,9 @@ public final class HyGuardPlugin extends JavaPlugin {
         protectionEngine = new ProtectionEngine(regionCache, bypassHandler, config);
         playerDirectory.loadAll();
         backupManager.start(config.general.autoBackupIntervalMinutes, config.general.maxBackups);
+        if (mapOverlayManager != null) {
+            mapOverlayManager.invalidateAllRegions();
+        }
     }
 
     public boolean canManageRegion(PlayerRef playerRef, Region region) {
@@ -576,22 +613,22 @@ public final class HyGuardPlugin extends JavaPlugin {
                 .toList();
     }
 
-        public List<String> getKnownWorldIds() {
+    public List<String> getKnownWorldIds() {
         return regionCache.allRegions().stream()
             .map(Region::getWorldId)
             .filter(worldId -> worldId != null && !worldId.isBlank())
             .distinct()
             .sorted(String.CASE_INSENSITIVE_ORDER)
             .toList();
-        }
+    }
 
-        public List<Region> getAllRegions() {
+    public List<Region> getAllRegions() {
         return regionCache.allRegions().stream()
             .sorted(Comparator
                 .comparing(Region::getWorldId, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
                 .thenComparing(Region::getName, String.CASE_INSENSITIVE_ORDER))
             .toList();
-        }
+    }
 
     public List<Region> getDisplayRootRegions(String worldId) {
         return getWorldRegions(worldId).stream()
@@ -946,8 +983,13 @@ public final class HyGuardPlugin extends JavaPlugin {
             return validation.result();
         }
 
+        BlockPos previousMin = region.getMin() == null ? null : region.getMin().copy();
+        BlockPos previousMax = region.getMax() == null ? null : region.getMax().copy();
         region.setBounds(session.getFirstPoint().getPosition(), session.getSecondPoint().getPosition());
         saveRegion(region);
+        if (mapOverlayManager != null) {
+            mapOverlayManager.invalidateRegionBounds(region.getWorldId(), previousMin, previousMax, region.getMin(), region.getMax());
+        }
         return RegionUpdateResult.SUCCESS;
     }
 
@@ -1107,6 +1149,24 @@ public final class HyGuardPlugin extends JavaPlugin {
             return;
         }
         knownWorlds.put(world.getName(), world);
+    }
+
+    public World getKnownWorld(String worldId) {
+        if (worldId == null || worldId.isBlank()) {
+            return null;
+        }
+
+        World direct = knownWorlds.get(worldId);
+        if (direct != null) {
+            return direct;
+        }
+
+        for (Map.Entry<String, World> entry : knownWorlds.entrySet()) {
+            if (worldId.equalsIgnoreCase(entry.getKey())) {
+                return entry.getValue();
+            }
+        }
+        return null;
     }
 
     public String resolveRegionWorldId(String worldId, BlockPos position) {
@@ -1499,6 +1559,33 @@ public final class HyGuardPlugin extends JavaPlugin {
     }
 
     public void openRegionDetail(Store<EntityStore> store, Ref<EntityStore> entityRef, PlayerRef playerRef, String worldId, String regionName) {
+        openRegionWorkspace(store, entityRef, playerRef, worldId, regionName);
+    }
+
+    public void openRegionWorkspace(Store<EntityStore> store,
+                                    Ref<EntityStore> entityRef,
+                                    PlayerRef playerRef,
+                                    String worldId,
+                                    String regionName) {
+        openRegionWorkspace(store, entityRef, playerRef, worldId, regionName, RegionWorkspacePage.WorkspaceTab.OVERVIEW, RegionWorkspacePage.AccessMode.MEMBERS);
+    }
+
+    public void openRegionWorkspace(Store<EntityStore> store,
+                                    Ref<EntityStore> entityRef,
+                                    PlayerRef playerRef,
+                                    String worldId,
+                                    String regionName,
+                                    RegionWorkspacePage.WorkspaceTab initialTab) {
+        openRegionWorkspace(store, entityRef, playerRef, worldId, regionName, initialTab, RegionWorkspacePage.AccessMode.MEMBERS);
+    }
+
+    public void openRegionWorkspace(Store<EntityStore> store,
+                                    Ref<EntityStore> entityRef,
+                                    PlayerRef playerRef,
+                                    String worldId,
+                                    String regionName,
+                                    RegionWorkspacePage.WorkspaceTab initialTab,
+                                    RegionWorkspacePage.AccessMode initialAccessMode) {
         if (store == null || entityRef == null || playerRef == null || worldId == null || regionName == null) {
             return;
         }
@@ -1506,7 +1593,7 @@ public final class HyGuardPlugin extends JavaPlugin {
         if (player == null) {
             return;
         }
-        player.getPageManager().openCustomPage(entityRef, store, new RegionDetailPage(playerRef, this, worldId, regionName));
+        player.getPageManager().openCustomPage(entityRef, store, new RegionWorkspacePage(playerRef, this, worldId, regionName, initialTab, initialAccessMode));
     }
 
     public void openMemberManager(Store<EntityStore> store, Ref<EntityStore> entityRef, PlayerRef playerRef, String worldId, String regionName) {
@@ -1540,6 +1627,17 @@ public final class HyGuardPlugin extends JavaPlugin {
             return;
         }
         player.getPageManager().openCustomPage(entityRef, store, new FlagEditorPage(playerRef, this, worldId, regionName));
+    }
+
+    public void openRegionMapSettings(Store<EntityStore> store, Ref<EntityStore> entityRef, PlayerRef playerRef, String worldId, String regionName) {
+        if (store == null || entityRef == null || playerRef == null || worldId == null || regionName == null) {
+            return;
+        }
+        Player player = store.getComponent(entityRef, Player.getComponentType());
+        if (player == null) {
+            return;
+        }
+        player.getPageManager().openCustomPage(entityRef, store, new RegionMapSettingsPage(playerRef, this, worldId, regionName));
     }
 
     private List<PlayerIdentity> decodePlayerIdentities(String raw) {

@@ -19,7 +19,7 @@ $C.@PageOverlay {
     }
 
     Label {
-      Text: "HyGuard Regions";
+      Text: "HyGuard";
       Style: $Hg.@HgTitleStyle;
       Anchor: (Top: 28, Left: 148, Height: 26);
     }
@@ -41,57 +41,48 @@ $C.@PageOverlay {
     }
 
     Group #SummaryCard {
-      Anchor: (Top: 96, Left: 28, Right: 28, Height: 102);
+      Anchor: (Top: 96, Left: 28, Right: 28, Height: 86);
       Background: $Hg.@HgSurface;
-      Padding: (Top: 16, Bottom: 16, Left: 18, Right: 18);
+      Padding: (Top: 12, Bottom: 12, Left: 18, Right: 18);
 
-      Label {
-        Text: "World";
-        Style: $Hg.@HgSectionTitleStyle;
-        Anchor: (Top: 0, Left: 0, Width: 70, Height: 18);
+      Group {
+        Anchor: (Top: 0, Left: 0, Width: 250, Height: 62);
+        Background: $Hg.@HgSurfaceAlt;
+        Padding: (Top: 8, Bottom: 8, Left: 12, Right: 12);
+        Label { Text: "Світ"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 0, Left: 0, Right: 0, Height: 14); }
+        Label #WorldValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 22, Left: 0, Right: 0, Height: 18); }
       }
 
-      Label #WorldValue {
-        Style: $Hg.@HgBodyStyle;
-        Anchor: (Top: 22, Left: 0, Width: 240, Height: 18);
+      Group {
+        Anchor: (Top: 0, Left: 264, Width: 160, Height: 62);
+        Background: $Hg.@HgSurfaceAlt;
+        Padding: (Top: 8, Bottom: 8, Left: 12, Right: 12);
+        Label { Text: "Регіони"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 0, Left: 0, Right: 0, Height: 14); }
+        Label #CountValue { Style: $Hg.@HgBodyStyle; Anchor: (Top: 22, Left: 0, Right: 0, Height: 18); }
       }
 
-      Label {
-        Text: "Saved regions";
-        Style: $Hg.@HgSectionTitleStyle;
-        Anchor: (Top: 0, Left: 286, Width: 110, Height: 18);
-      }
-
-      Label #CountValue {
-        Style: $Hg.@HgBodyStyle;
-        Anchor: (Top: 22, Left: 286, Width: 80, Height: 18);
-      }
-
-      Label #HelpText {
-        Style: $Hg.@HgMetaStyle;
-        Anchor: (Top: 54, Left: 0, Right: 0, Height: 32);
+      Group {
+        Anchor: (Top: 0, Left: 438, Right: 0, Height: 62);
+        Background: $Hg.@HgSurfaceAlt;
+        Padding: (Top: 8, Bottom: 8, Left: 12, Right: 12);
+        Label { Text: "Фокус"; Style: $Hg.@HgFieldLabelStyle; Anchor: (Top: 0, Left: 0, Right: 0, Height: 14); }
+        Label #HelpText { Style: $Hg.@HgMetaStyle; Anchor: (Top: 22, Left: 0, Right: 0, Height: 18); }
       }
     }
 
     Group {
-      Anchor: (Top: 218, Left: 28, Right: 28, Bottom: 28);
+      Anchor: (Top: 198, Left: 28, Right: 28, Bottom: 28);
       Background: $Hg.@HgSurface;
       Padding: (Top: 16, Bottom: 16, Left: 12, Right: 12);
 
       Label {
-        Text: "Region cards";
+        Text: "Список";
         Style: $Hg.@HgSectionTitleStyle;
-        Anchor: (Top: 0, Left: 6, Width: 160, Height: 18);
-      }
-
-      Label {
-        Text: "Each card is fully clickable and highlights on hover.";
-        Style: $Hg.@HgMetaStyle;
-        Anchor: (Top: 20, Left: 6, Right: 0, Height: 18);
+        Anchor: (Top: 0, Left: 6, Width: 120, Height: 18);
       }
 
       Group #RowsContainer {
-        Anchor: (Top: 48, Left: 0, Right: 0, Bottom: 0);
+        Anchor: (Top: 28, Left: 0, Right: 0, Bottom: 0);
         LayoutMode: TopScrolling;
         ScrollbarStyle: $C.@DefaultScrollbarStyle;
 

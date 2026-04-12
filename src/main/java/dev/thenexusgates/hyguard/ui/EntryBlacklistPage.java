@@ -62,8 +62,8 @@ public final class EntryBlacklistPage extends InteractiveCustomUIPage<EntryBlack
         this.worldName = worldName;
         this.regionName = regionName;
         this.statusMessage = t(
-                "Select a known player or type a username manually, then add them to the blacklist.",
-                "Виберіть відомого гравця або введіть ім'я вручну, а потім додайте його до чорного списку."
+            "Manage blocked players.",
+            "Керуйте заблокованими гравцями."
         );
     }
 
@@ -98,7 +98,7 @@ public final class EntryBlacklistPage extends InteractiveCustomUIPage<EntryBlack
 
         switch (data.action) {
             case "Back" -> {
-                plugin.openFlagEditor(store, entityRef, playerRef, worldName, regionName);
+                plugin.openRegionWorkspace(store, entityRef, playerRef, worldName, regionName, RegionWorkspacePage.WorkspaceTab.ACCESS, RegionWorkspacePage.AccessMode.BLACKLIST);
                 return;
             }
             case "Close" -> {
@@ -116,8 +116,8 @@ public final class EntryBlacklistPage extends InteractiveCustomUIPage<EntryBlack
                 if (selected != null) {
                     searchInput = selected.name();
                     setStatus(StatusTone.INFO, selected.blocked()
-                            ? f("%s is currently blocked from entering this region.", "%s зараз заблокований для входу в цей регіон.", selected.name())
-                            : f("Selected %s. Press Add to block entry for this player.", "Вибрано %s. Натисніть Додати, щоб заборонити цьому гравцю вхід.", selected.name()));
+                            ? f("%s is blocked.", "%s заблокований.", selected.name())
+                            : f("Selected: %s", "Вибрано: %s", selected.name()));
                 }
             }
         }
@@ -211,7 +211,7 @@ public final class EntryBlacklistPage extends InteractiveCustomUIPage<EntryBlack
         bindValue(evt, "#SearchInput", "@SearchInput");
 
         cmd.set("#PageTitle.Text", f("Entry Blacklist - %s", "Чорний список входу - %s", regionName));
-        cmd.set("#Subtitle.Text", f("Region: %s | World: %s | Blacklisted players are denied entry even when normal entry is allowed.", "Регіон: %s | Світ: %s | Гравцям із чорного списку заборонено вхід навіть тоді, коли звичайний вхід дозволений.", regionName, worldName));
+        cmd.set("#Subtitle.Text", f("Region: %s | World: %s", "Регіон: %s | Світ: %s", regionName, worldName));
         cmd.set("#SearchInput.Value", searchInput == null ? "" : searchInput);
         applyStatus(cmd);
 
@@ -234,13 +234,13 @@ public final class EntryBlacklistPage extends InteractiveCustomUIPage<EntryBlack
         CandidateEntry selected = getSelectedCandidate(region);
         cmd.set("#SelectedName.Text", selected == null ? t("No player selected", "Гравця не вибрано") : selected.name());
         cmd.set("#SelectedState.Text", selected == null
-            ? t("Type a username or click a known player row", "Введіть ім'я або натисніть на рядок відомого гравця")
-            : (selected.blocked() ? t("Current state: blocked from entry", "Поточний стан: вхід заблоковано") : t("Current state: not blacklisted", "Поточний стан: не в чорному списку")));
+            ? t("Type a name or pick a row", "Введіть ім'я або виберіть рядок")
+            : (selected.blocked() ? t("Blocked", "Заблоковано") : t("Not blocked", "Не заблоковано")));
         cmd.set("#SelectedHint.Text", selected == null
-            ? t("Known players come from HyGuard's remembered player directory. Typing manually still works for online or remembered usernames.", "Відомі гравці беруться зі збереженого каталогу гравців HyGuard. Ручне введення теж працює для онлайн або запам'ятованих імен.")
+            ? t("Pick or type a player.", "Виберіть або введіть гравця.")
                 : (selected.blocked()
-                ? t("Press Remove to allow this player to enter again.", "Натисніть Видалити, щоб знову дозволити цьому гравцю вхід.")
-                : t("Press Add to deny this player entry to the region.", "Натисніть Додати, щоб заборонити цьому гравцю вхід у регіон.")));
+                ? t("Remove to allow entry.", "Приберіть для дозволу входу.")
+                : t("Add to block entry.", "Додайте для блокування входу.")));
     }
 
     private void renderCandidates(UICommandBuilder cmd,
@@ -260,8 +260,8 @@ public final class EntryBlacklistPage extends InteractiveCustomUIPage<EntryBlack
                 cmd.set(rowId + " #RoleBadge.Text", entry.blocked() ? t("BLOCKED", "ЗАБОРОНЕНО") : t("KNOWN", "ВІДОМИЙ"));
             cmd.set(rowId + " #MemberName.Text", entry.name());
             cmd.set(rowId + " #MemberMeta.Text", entry.blocked()
-                    ? t("Entry is explicitly denied for this player in the current region.", "Для цього гравця вхід у поточний регіон явно заборонено.")
-                    : t("Known player. Select this row and press Add to blacklist them.", "Відомий гравець. Виберіть цей рядок і натисніть Додати, щоб внести його до чорного списку."));
+                    ? t("Entry denied in this region.", "Вхід заборонено в цьому регіоні.")
+                    : t("Known player.", "Відомий гравець."));
             cmd.set(rowId + " #SelectedAccent.Visible", selected);
             cmd.set(rowId + " #OwnerChip.Visible", false);
             cmd.set(rowId + " #YouChip.Visible", isSelf);

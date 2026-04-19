@@ -43,13 +43,15 @@ public final class HyGuardAssetPack {
     private static final List<String> MIGRATED_DATA_ENTRIES = List.of("config.json", "players", "regions", "backups");
 
     private final Logger logger;
+    private final Path legacyDataRoot;
     private final Path dataRoot;
     private final Path packRoot;
 
     private volatile boolean registered;
 
-    private HyGuardAssetPack(Logger logger, Path dataRoot, Path packRoot) {
+    private HyGuardAssetPack(Logger logger, Path legacyDataRoot, Path dataRoot, Path packRoot) {
         this.logger = logger;
+        this.legacyDataRoot = legacyDataRoot;
         this.dataRoot = dataRoot;
         this.packRoot = packRoot;
     }
@@ -64,10 +66,14 @@ public final class HyGuardAssetPack {
             Path modsDirectory = Files.isDirectory(pluginLocation)
                     ? pluginLocation
                     : pluginLocation.getParent();
-            Path dataRoot = modsDirectory.resolve(DATA_DIRECTORY_NAME);
+                Path legacyDataRoot = modsDirectory.resolve(DATA_DIRECTORY_NAME);
+                Path worldRoot = modsDirectory.getParent();
+                Path dataRoot = worldRoot == null
+                    ? legacyDataRoot
+                    : worldRoot.resolve("plugins").resolve("HyGuard");
             Path packRoot = modsDirectory.resolve(PACK_DIRECTORY_NAME);
 
-            HyGuardAssetPack assetPack = new HyGuardAssetPack(logger, dataRoot, packRoot);
+                HyGuardAssetPack assetPack = new HyGuardAssetPack(logger, legacyDataRoot, dataRoot, packRoot);
             assetPack.prepare(pluginLocation, modsDirectory);
             return assetPack;
         } catch (IOException | URISyntaxException exception) {
@@ -159,6 +165,10 @@ public final class HyGuardAssetPack {
     }
 
     private void migrateLegacyData() throws IOException {
+        if (!dataRoot.equals(legacyDataRoot) && Files.exists(legacyDataRoot)) {
+            moveRecursively(legacyDataRoot, dataRoot);
+            logger.info("[HyGuard] Migrated legacy data directory from mods root: " + legacyDataRoot);
+        }
         if (dataRoot.equals(packRoot)) {
             return;
         }

@@ -298,6 +298,7 @@ public final class HyGuardPlugin extends JavaPlugin {
             .filter(worldId -> worldId != null && !worldId.isBlank())
             .distinct()
             .count();
+        getLogger().at(Level.INFO).log("[HyGuard] Map mode=%s", mapOverlayManager.describeMode());
         getLogger().at(Level.INFO).log("[HyGuard] Enabled. Regions loaded=%s worlds=%s selectionVisuals=%s dataRoot=%s packRoot=%s",
                 regionCache.allRegions().size(),
                 worldCount,

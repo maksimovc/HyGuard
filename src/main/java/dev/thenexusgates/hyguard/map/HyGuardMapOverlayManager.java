@@ -57,9 +57,11 @@ public final class HyGuardMapOverlayManager {
     private static volatile boolean codecRegistered;
 
     private final HyGuardPlugin plugin;
+    private final SimpleClaimsMapCompat simpleClaimsCompat;
 
     public HyGuardMapOverlayManager(HyGuardPlugin plugin) {
         this.plugin = plugin;
+        this.simpleClaimsCompat = new SimpleClaimsMapCompat();
     }
 
     public void registerCodec() {
@@ -94,6 +96,10 @@ public final class HyGuardMapOverlayManager {
     }
 
     public void shutdown() {
+    }
+
+    public String describeMode() {
+        return simpleClaimsCompat.describeMode();
     }
 
     public void invalidateRegion(Region region) {
@@ -187,7 +193,8 @@ public final class HyGuardMapOverlayManager {
         List<Region> candidates = regionCache.getRegionsOverlappingChunk(worldId, chunkX, chunkZ).stream()
                 .filter(HyGuardRegionMapStyle::isVisible)
                 .toList();
-        if (candidates.isEmpty()) {
+        SimpleClaimsMapCompat.ChunkOverlay simpleClaimsOverlay = simpleClaimsCompat.resolveChunkOverlay(worldId, chunkX, chunkZ);
+        if (candidates.isEmpty() && !simpleClaimsOverlay.visible()) {
             return;
         }
 
@@ -199,7 +206,7 @@ public final class HyGuardMapOverlayManager {
         int blockSpanZ = Math.max(1, maxBlockZ - minBlockZ + 1);
         int borderStepX = Math.max(1, (int) Math.ceil((double) blockSpanX / width));
         int borderStepZ = Math.max(1, (int) Math.ceil((double) blockSpanZ / height));
-        boolean changed = false;
+        boolean changed = applySimpleClaimsOverlay(pixels, width, height, simpleClaimsOverlay);
 
         for (int pixelY = 0; pixelY < height; pixelY++) {
             int worldZ = minBlockZ + Math.min(blockSpanZ - 1, (int) ((long) pixelY * blockSpanZ / height));
@@ -230,6 +237,38 @@ public final class HyGuardMapOverlayManager {
         if (changed) {
             writePixels(image, pixels, width, height);
         }
+    }
+
+    private static boolean applySimpleClaimsOverlay(int[] pixels,
+                                                    int width,
+                                                    int height,
+                                                    SimpleClaimsMapCompat.ChunkOverlay overlay) {
+        if (pixels == null || width <= 0 || height <= 0 || overlay == null || !overlay.visible()) {
+            return false;
+        }
+
+        int borderThicknessX = Math.max(1, Math.min(2, width));
+        int borderThicknessY = Math.max(1, Math.min(2, height));
+        boolean changed = false;
+        for (int pixelY = 0; pixelY < height; pixelY++) {
+            boolean northBorder = overlay.northBorder() && pixelY < borderThicknessY;
+            boolean southBorder = overlay.southBorder() && pixelY >= height - borderThicknessY;
+            int rowOffset = pixelY * width;
+            for (int pixelX = 0; pixelX < width; pixelX++) {
+                boolean border = northBorder
+                        || southBorder
+                        || (overlay.westBorder() && pixelX < borderThicknessX)
+                        || (overlay.eastBorder() && pixelX >= width - borderThicknessX);
+                float alpha = border ? 0.75F : 0.4F;
+                int pixelIndex = rowOffset + pixelX;
+                int blended = blendArgb(pixels[pixelIndex], overlay.color(), alpha);
+                if (blended != pixels[pixelIndex]) {
+                    pixels[pixelIndex] = blended;
+                    changed = true;
+                }
+            }
+        }
+        return changed;
     }
 
     private MapMarker createRegionMarker(Region region) {
